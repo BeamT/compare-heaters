@@ -1,0 +1,8 @@
+# Personal Claude Code files: point at private internal docs, never commit
+CLAUDE.local.md
+.claude/settings.local.json
+
+# Build and dependencies
+node_modules/
+dist/
+.DS_Store
