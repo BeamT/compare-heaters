@@ -97,6 +97,146 @@ describe('utility', () => {
   });
 });
 
+function ready(state: PageState = sf, rates: ZipRates = sfRates) {
+  const model = pageModel(state, rates);
+  if (model.kind !== 'ready') throw new Error(`expected results, got ${model.kind}`);
+  return model;
+}
+
+describe('experience card', () => {
+  /** Each row as "label: ✓ — ✓ … (Focal's line)". */
+  const marks = (state: PageState) =>
+    ready(state).experience.rows.map(r => `${r.label}: ${r.checks.map(c => (c ? '✓' : '—')).join(' ')} (${r.how})`);
+
+  it('puts the benefits side by side, with how Focal does each', () => {
+    expect(marks(sf)).toEqual([
+      'Every guest is comfortable: ✓ — — — (Guests set their own heat)',
+      'Heaters turn on and off by themselves: ✓ — — — (Runs on your operating hours)',
+      'No fuel to buy, store or swap: ✓ — ✓ ✓ (Plugs into a standard 120V outlet)',
+      'Nothing burning near guests: ✓ — — ✓ (No flame, no exhaust to breathe)',
+      'Nothing for guests or staff to trip over: ✓ — ✓ ✓ (Mounted overhead)',
+      'Heat follows your tables when you rearrange: ✓ ✓ — — (Slides anywhere on the rail)',
+      'Problems are caught before guests notice: ✓ — — — (We’re alerted if one fails)',
+      'No service calls to arrange: ✓ — — — (Maintenance & updates included)',
+    ]);
+  });
+
+  it('hides the same columns as the cost table', () => {
+    expect(marks({ ...sf, hidden: ['propane', 'electric'] })[2]).toBe('No fuel to buy, store or swap: ✓ ✓ (Plugs into a standard 120V outlet)');
+  });
+});
+
+describe('revenue upside', () => {
+  const noHeat: PageState = { ...sf, heatToday: false };
+  const lines = (state: PageState) => {
+    const { revenue } = ready(state);
+    if (!revenue.open) throw new Error('expected the revenue inputs');
+    return revenue;
+  };
+  const texts = (state: PageState) => {
+    const r = lines(state);
+    return [r.moreMonthsOpen, r.moreTablesSeated, r.biggerChecks, r.total, r.paysForItself].map(c => c.text);
+  };
+
+  it('stays closed for visitors who already heat their patio', () => {
+    expect(ready(sf).revenue).toEqual({ open: false });
+  });
+
+  it('shows a dash on every line until its own input is filled', () => {
+    expect(texts(noHeat)).toEqual(['—', '—', '—', '—', '—']);
+    expect(lines(noHeat).moreMonthsOpen.tip).toBe('');
+    expect(texts({ ...noHeat, revenue: { ...noHeat.revenue, averageCheck: 45, extraGuestsPerColdNight: 6 } }))
+      .toEqual(['—', '+$57,330/yr', '—', '+$57,330/yr', '1.4 seasons']);
+  });
+
+  it('adds up the lines and when Focal pays for itself, each with its formula', () => {
+    const estimate = { ...noHeat.revenue, averageCheck: 45, closedMonths: { start: 'Jan', end: 'Feb' }, extraGuestsPerColdNight: 6 } as const;
+    const r = lines({ ...noHeat, revenue: estimate });
+    expect(texts({ ...noHeat, revenue: estimate })).toEqual(['+$218,400/yr', '+$40,950/yr', '—', '+$259,350/yr', '0.2 seasons']);
+    expect(r.total.tip).toBe('$259,350/yr = $218,400 more months + $40,950 more tables');
+    expect(r.paysForItself.tip).toBe('0.2 heating seasons = $23,850 Focal upfront ÷ ($259,350 × 40% margin − $6,421 Focal yearly cost)');
+  });
+
+  it('warns when some closed months fall outside the heating season', () => {
+    const closed = (start: 'Jan' | 'Apr', end: 'Feb' | 'May') => ({ ...noHeat, revenue: { ...noHeat.revenue, averageCheck: 45, closedMonths: { start, end } } });
+    expect(lines(closed('Apr', 'May')).warning).toBe('1 of the 2 closed months falls inside your heating season (Oct–Apr); only that one counts.');
+    expect(lines(closed('Jan', 'Feb')).warning).toBeUndefined();
+  });
+});
+
+describe('assumptions panel', () => {
+  /** Each row as "label = value unit [affects]", group titles as "# title". */
+  const panel = (state: PageState) => {
+    const p = ready(state).panel;
+    return p.groups.flatMap(g => [
+      ...(g.title ? [`# ${g.title}`] : []),
+      ...g.rows.map(r => `${r.label} = ${r.value}${r.unit ? ` ${r.unit}` : ''} [${r.affects.map(a => a.label).join(', ')}]`),
+    ]);
+  };
+
+  it("opens on Focal's tab, listing what else each value affects", () => {
+    const p = ready(sf).panel;
+    expect(p.tabs.map(t => `${t.label}${t.selected ? '*' : ''}`)).toEqual(['Focal*', 'Propane towers', 'Natural gas', 'Conventional electric', 'All']);
+    expect(p.affectsHeading).toBe('Also affects');
+    expect(panel(sf)).toEqual([
+      'Evening electricity rate = 0.494 $/kWh [Conventional electric]',
+      'New circuit cost = 350 $/circuit [Natural gas, Conventional electric]',
+      '120V outlets already in place = false [Natural gas]',
+      'Installer rate = 100 $/hr [Natural gas, Conventional electric]',
+      'Focal install time = 2 hrs/rail []',
+    ]);
+    expect(p.groups[0]!.rows[0]!.description).toBe('What you pay per kWh during evening service. Use the rate from your bill if you know it.');
+  });
+
+  it('tags the ZIP-based rates with their source, the evening rate as an estimate', () => {
+    const rows = ready({ ...sf, tab: 'all' }).panel.groups.flatMap(g => g.rows);
+    expect(rows.find(r => r.key === 'eveningElectricRate')?.tag).toBe("Estimate: PG&E 2024 average × 1.25 for evenings. Use your bill's rate if you know it.");
+    expect(rows.find(r => r.key === 'naturalGasRate')?.tag).toBe('CA 2024 commercial average');
+    expect(rows.find(r => r.key === 'installerRate')?.tag).toBeUndefined();
+  });
+
+  it("groups every row under its option on the All tab, and lists only what's shown", () => {
+    const all = panel({ ...sf, tab: 'all', hidden: ['gas'] });
+    expect(ready({ ...sf, tab: 'all' }).panel.affectsHeading).toBe('Affects');
+    expect(all.filter(line => line.startsWith('#'))).toEqual(['# Focal', '# Propane towers', '# Conventional electric']);
+    expect(all.slice(0, 3)).toEqual([
+      '# Focal',
+      'Evening electricity rate = 0.494 $/kWh [Focal, Conventional electric]',
+      'New circuit cost = 350 $/circuit [Focal, Conventional electric]',
+    ]);
+    expect(all.some(line => /gas/i.test(line))).toBe(false);
+    expect(all).toContain('240V circuits already in place = false [Conventional electric]');
+    const withGas = panel({ ...sf, tab: 'all' });
+    expect(withGas[withGas.indexOf('# Natural gas') + 1]).toBe('Natural gas rate = 1.45 $/therm [Natural gas]');
+  });
+
+  it("falls back to Focal's tab when the chosen option is hidden", () => {
+    const p = ready({ ...sf, tab: 'propane', hidden: ['propane'] }).panel;
+    expect(p.tabs.find(t => t.selected)?.key).toBe('focal');
+  });
+});
+
+describe('editing an assumption', () => {
+  const cost = (state: PageState, label: string) => table(state).sections.flatMap(s => s.rows).find(r => r.label === label)!.cells;
+
+  it('reworks the costs and shows the new value in the panel', () => {
+    const edited = { ...sf, overrides: { installerRate: 150, has120VOutlets: true } };
+    // 7 rails × 2 hrs × $150/hr, outlets already in place
+    expect(cost(edited, 'Install')[0]!.text).toBe('$2,100');
+    const rows = ready(edited).panel.groups[0]!.rows;
+    expect(rows.find(r => r.key === 'installerRate')?.value).toBe(150);
+    expect(rows.find(r => r.key === 'has120VOutlets')?.value).toBe(true);
+  });
+
+  it("stops calling the evening rate an estimate once it's the visitor's own", () => {
+    const edited = { ...sf, overrides: { eveningElectricRate: 0.3 } };
+    const energy = cost(edited, 'Energy')[0]!.tip;
+    expect(energy).toContain('× $0.300/kWh');
+    expect(energy).not.toContain('estimate');
+    expect(ready(edited).panel.groups[0]!.rows[0]!.tag).toBe('Your rate');
+  });
+});
+
 describe('before there are results', () => {
   it('asks for a ZIP and seats first, then waits for the rates', () => {
     expect(pageModel(DEFAULT_STATE, undefined)).toEqual({ kind: 'missing', missing: ['zip', 'seats'] });

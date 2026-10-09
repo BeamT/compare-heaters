@@ -152,6 +152,9 @@ export const ASSUMPTIONS: { [K in keyof Assumptions]: AssumptionInfo<Assumptions
   btuPerTherm: { label: 'BTU per therm', unit: 'BTU/therm', affects: ['gas'], shown: 'tooltip', default: 100_000, source: 'Physical constant' },
 };
 
+/** The values a visitor might know differently, in panel order. */
+export const EDITABLE = (Object.keys(ASSUMPTIONS) as Array<keyof Assumptions>).filter(k => ASSUMPTIONS[k].shown === 'panel');
+
 /** Every default, with the visitor's ZIP-based rates filled in. */
 export function defaultAssumptions(rates: Rates): Assumptions {
   const defaults = Object.fromEntries(

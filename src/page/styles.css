@@ -17,6 +17,7 @@
   --border-strong: #b9b9aa;
   --muted: #6b6661;
   --on-dark-muted: rgba(250, 250, 240, 0.62);
+  --warning: #8a5a00;
 
   --sans: elza, Archivo, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --condensed: elza-condensed, Archivo, 'Arial Narrow', sans-serif;
@@ -82,9 +83,9 @@
 .ch .strip .utility select { width: 150px; }
 .ch .strip .occupancy select { width: 74px; }
 .ch .strip .days select { width: 58px; }
-.ch .pair { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--on-dark-muted); }
-.ch .pair select.month { width: 66px; }
-.ch .pair select.time { width: 96px; }
+.ch .strip .pair { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--on-dark-muted); }
+.ch .strip .pair select.month { width: 66px; }
+.ch .strip .pair select.time { width: 96px; }
 .ch .info {
   display: inline-grid;
   place-items: center;
@@ -104,23 +105,24 @@
 
 /* ---- Results ---- */
 .ch .main { padding: var(--space-6) var(--gutter) var(--space-7); max-width: 1280px; margin: 0 auto; }
-.ch .status { margin: 0; font-size: 16px; color: var(--muted); }
+.ch .results { display: flex; flex-direction: column; gap: 44px; }
+.ch .status p { margin: 0; font-size: 16px; color: var(--muted); }
 .ch .status .retry { padding: 0; border: 0; background: none; color: var(--black); text-decoration: underline; cursor: pointer; }
 .ch .hint { font-size: 13px; color: var(--muted); margin: var(--space-2) 0 0; }
 
-/* Cost table: the site's spec-sheet look, rules instead of boxes */
+/* Cost and experience tables share one grid, so their columns line up. The site's spec-sheet look: rules instead of boxes */
 .ch .scroll { overflow-x: auto; }
-.ch table.cost { width: 100%; min-width: 600px; border-collapse: separate; border-spacing: 0; table-layout: fixed; font-size: 14px; }
-.ch table.cost col.label { width: var(--col1); }
-.ch table.cost col.add { width: var(--addcol); }
-.ch table.cost th, .ch table.cost td { padding: 9px 14px; border-bottom: 1px solid var(--rule); text-align: right; vertical-align: middle; font-weight: 400; }
-.ch table.cost th:first-child, .ch table.cost td:first-child { text-align: left; padding-left: 0; }
+.ch table.grid { width: 100%; min-width: 600px; border-collapse: separate; border-spacing: 0; table-layout: fixed; font-size: 14px; }
+.ch table.grid col.label { width: var(--col1); }
+.ch table.grid col.add { width: var(--addcol); }
+.ch table.grid th, .ch table.grid td { padding: 9px 14px; border-bottom: 1px solid var(--rule); text-align: right; vertical-align: middle; font-weight: 400; }
+.ch table.grid th:first-child, .ch table.grid td:first-child { text-align: left; padding-left: 0; }
 
 /* Header row: section title, then column tabs */
-.ch table.cost thead th { border-bottom: 1px solid var(--black); padding: 0 3px; vertical-align: bottom; }
-.ch table.cost thead th.focal { padding: 0; border-bottom-color: var(--orange); }
-.ch table.cost thead th.title { padding: 0 0 12px; font-size: 30px; font-weight: 600; line-height: 1; }
-.ch table.cost thead th.add { padding-bottom: 8px; text-align: left; }
+.ch table.grid thead th { border-bottom: 1px solid var(--black); padding: 0 3px; vertical-align: bottom; }
+.ch table.grid thead th.focal { padding: 0; border-bottom-color: var(--orange); }
+.ch table.grid thead th.title { padding: 0 0 12px; font-size: 30px; font-weight: 600; line-height: 1; }
+.ch table.grid thead th.add { padding-bottom: 8px; text-align: left; }
 .ch .tab {
   position: relative;
   display: flex;
@@ -137,6 +139,7 @@
   text-align: center;
 }
 .ch .tab.focal { background: var(--orange); }
+.ch .tab.static { padding: 0 10px; }
 .ch .tab .remove {
   position: absolute;
   right: 6px;
@@ -178,7 +181,7 @@
 .ch .add-tab:hover { border-style: solid; border-color: var(--black); color: var(--black); background: var(--yellow); }
 
 /* Body rows */
-.ch table.cost td.focal { background: var(--focal-tint); }
+.ch table.grid td.focal { background: var(--focal-tint); }
 .ch table.cost tr.group td { font: 400 12px/1.2 var(--mono); text-transform: uppercase; letter-spacing: 0.05em; padding-top: 28px; padding-bottom: 8px; border-bottom-color: var(--black); }
 .ch table.cost tr.perSeat td { padding-top: 14px; padding-bottom: 14px; }
 .ch table.cost tr.perSeat .value { font-family: var(--condensed); font-stretch: 62%; font-weight: 600; font-size: 26px; line-height: 1; }
@@ -193,6 +196,58 @@
   cursor: help;
 }
 .ch .value:hover, .ch .value[aria-describedby] { border-bottom-color: var(--black); }
+
+.ch .value.blank { border-bottom: 0; color: var(--muted); cursor: default; }
+
+/* Experience: ✓/— under the same column tabs */
+.ch table.experience td { text-align: center; padding-top: 12px; padding-bottom: 12px; }
+.ch table.experience tbody th { text-align: left; }
+.ch .yes { display: inline-grid; place-items: center; font-size: 17px; }
+.ch .no { display: inline-grid; place-items: center; color: var(--border-strong); font-size: 15px; }
+.ch .how { display: block; margin-top: 3px; font-size: 13px; line-height: 1.35; color: var(--muted); }
+
+/* Sections below the tables: a rule on top, no boxed card */
+.ch .card { border-top: 1px solid var(--black); padding-top: 22px; }
+.ch .card h2 { margin: 0 0 var(--space-2); font-size: 30px; line-height: 1; }
+.ch .lede { margin: 0 0 var(--space-4); font-size: 14px; color: var(--muted); }
+.ch .unit { margin: 0 5px; font-size: 13px; color: var(--muted); }
+.ch .description, .ch .source { display: block; font-size: 13px; color: var(--muted); }
+.ch .group td { font: 400 12px/1.2 var(--mono); text-transform: uppercase; letter-spacing: 0.05em; padding: 20px 0 8px; border-bottom: 1px solid var(--black); }
+.ch .card .pair { display: inline-flex; align-items: center; }
+.ch .card .pair select { width: 72px; padding: 4px; }
+
+/* Yes / No, and the panel's tabs: pills */
+.ch .question { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); font-size: 15px; }
+.ch .segmented { display: inline-flex; gap: 2px; padding: 3px; border-radius: 40px; background: var(--light-gray); }
+.ch .segmented button { padding: 5px 16px; border: 0; border-radius: 40px; background: transparent; font-size: 13px; font-weight: 500; cursor: pointer; transition: background-color 0.2s; }
+.ch .segmented button[aria-pressed='true'] { background: var(--black); color: var(--off-white); }
+.ch .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.ch .tabs button { height: 34px; padding: 0 16px; border: 1px solid var(--border-strong); border-radius: 40px; background: none; color: var(--muted); font-size: 13px; font-weight: 500; cursor: pointer; transition: border-color 0.2s, color 0.2s, background-color 0.2s; }
+.ch .tabs button:hover { border-color: var(--black); color: var(--black); }
+.ch .tabs button[aria-pressed='true'] { border-color: var(--black); background: var(--black); color: var(--off-white); }
+
+/* Revenue upside: each input on the row of the number it drives */
+.ch table.lines { width: 100%; margin-top: var(--space-3); border-collapse: collapse; font-size: 14px; }
+.ch table.lines th, .ch table.lines td { padding: 12px 0; border-bottom: 1px solid var(--rule); text-align: left; font-weight: 400; vertical-align: middle; }
+.ch table.lines td.input { padding: 12px; white-space: nowrap; }
+.ch table.lines td.input input[type='number'] { width: 80px; padding: 4px 7px; }
+.ch table.lines tr.shared th, .ch table.lines tr.shared td { padding-top: 8px; padding-bottom: 8px; }
+.ch table.lines td.number { text-align: right; white-space: nowrap; font-family: var(--condensed); font-stretch: 62%; font-weight: 600; font-size: 28px; line-height: 1; }
+.ch table.lines tr.total th, .ch table.lines tr.total td { border-top: 1.5px solid var(--border-strong); font-weight: 600; }
+.ch .warning { margin: var(--space-2) 0 0; font-size: 13px; color: var(--warning); }
+
+/* Assumptions panel */
+.ch table.sheet { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.ch table.sheet th, .ch table.sheet td { padding: 8px 10px; border-bottom: 1px solid var(--rule); text-align: left; font-weight: 400; vertical-align: middle; }
+.ch table.sheet th:first-child, .ch table.sheet td:first-child { padding-left: 0; }
+.ch table.sheet thead th { font: 400 12px/1.2 var(--mono); text-transform: uppercase; letter-spacing: 0.05em; border-bottom-color: var(--black); }
+.ch table.sheet td.input { width: 170px; white-space: nowrap; }
+.ch table.sheet td.input input[type='number'] { width: 92px; padding: 4px 7px; }
+.ch table.sheet td.input .unit { margin-right: 0; }
+.ch table.sheet td.description { color: var(--muted); }
+.ch input[type='checkbox'] { width: 18px; height: 18px; accent-color: var(--black); }
+.ch .chip { display: inline-block; margin: 1px 4px 1px 0; padding: 2px 8px; border-radius: 40px; background: var(--light-gray); font-size: 13px; white-space: nowrap; }
+.ch .chip.focal { background: var(--focal-tint); }
 
 .ch .tip {
   position: absolute;
@@ -213,11 +268,34 @@
   .ch { --col1: 30%; --addcol: 132px; --pill-h: 40px; }
   .ch .strip { padding: var(--space-3) var(--space-4); }
   .ch .main { padding: var(--space-5) var(--space-4) 48px; }
-  .ch table.cost { font-size: 13px; }
-  .ch table.cost thead th.title { font-size: 26px; }
+  .ch table.grid { font-size: 13px; }
+  .ch table.grid thead th.title { font-size: 26px; }
   .ch .tab { font-size: 13px; padding-left: 10px; padding-right: 28px; }
   .ch .tab.focal { padding-right: 10px; }
   /* Row labels stay put while the numbers scroll sideways */
-  .ch table.cost th:first-child, .ch table.cost td:first-child { position: sticky; left: 0; z-index: 1; background: var(--off-white); padding-right: 10px; }
+  .ch table.grid th:first-child, .ch table.grid td:first-child { position: sticky; left: 0; z-index: 1; background: var(--off-white); padding-right: 10px; }
   .ch table.cost tr.perSeat .value { font-size: 20px; }
+  .ch .card h2 { font-size: 26px; }
+
+  /* Revenue: each input drops under its label; the number stays on the right */
+  .ch table.lines, .ch table.lines tbody { display: block; }
+  .ch table.lines tr { display: grid; grid-template-columns: 1fr auto; column-gap: var(--space-3); border-bottom: 1px solid var(--rule); }
+  .ch table.lines th, .ch table.lines td, .ch table.lines tr.total th, .ch table.lines tr.total td { border: 0; }
+  .ch table.lines tr.group { border-bottom-color: var(--black); }
+  .ch table.lines tr.group td { grid-column: 1 / -1; }
+  .ch table.lines tr.total { border-top: 1.5px solid var(--border-strong); }
+  .ch table.lines td:empty { display: none; }
+  .ch table.lines td.input, .ch table.lines tr.shared td.input { grid-column: 1; grid-row: 2; padding: 0 0 12px; white-space: normal; }
+  .ch table.lines td.number { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-size: 22px; }
+
+  /* Panel: label and value on top, then what it affects and what it is */
+  .ch table.sheet thead { display: none; }
+  .ch table.sheet, .ch table.sheet tbody { display: block; }
+  .ch table.sheet tr { display: grid; grid-template-columns: 1fr auto; column-gap: var(--space-3); padding: 10px 0; border-bottom: 1px solid var(--rule); }
+  .ch table.sheet tr.group { padding: 0; border-bottom-color: var(--black); }
+  .ch table.sheet tr.group td { grid-column: 1 / -1; }
+  .ch table.sheet th, .ch table.sheet td, .ch table.sheet tr:not(.group) td { padding: 0; border: 0; }
+  .ch table.sheet td.input { width: auto; grid-column: 2; grid-row: 1; }
+  .ch table.sheet td.affects, .ch table.sheet td.description { grid-column: 1 / -1; padding-top: 6px; }
+  .ch table.sheet td.affects:has(.no) { display: none; }
 }
