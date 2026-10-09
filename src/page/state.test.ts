@@ -10,7 +10,7 @@ describe('page state in the query string', () => {
   it('writes a readable link that reopens the same view', () => {
     const state: PageState = {
       zip: '94110',
-      utility: 1,
+      utility: 'PG&E',
       seats: 40,
       occupancy: 0.35,
       season: { start: 'Nov', end: 'Mar' },
@@ -19,12 +19,12 @@ describe('page state in the query string', () => {
       hidden: ['gas'],
     };
     const query = toQuery(state);
-    expect(query).toBe('?zip=94110&utility=1&seats=40&occupancy=35&season=Nov-Mar&days=5&hours=17.5-1&hide=gas');
+    expect(query).toBe('?zip=94110&utility=PG%26E&seats=40&occupancy=35&season=Nov-Mar&days=5&hours=17.5-1&hide=gas');
     expect(parseQuery(query)).toEqual(state);
   });
 
   it('keeps the defaults for anything a hand-edited link gets wrong', () => {
-    const state = parseQuery('?zip=9411&seats=0&occupancy=33&season=Oct-Smarch&days=8&hours=17-25&utility=-1');
+    const state = parseQuery('?zip=9411&seats=0&occupancy=33&season=Oct-Smarch&days=8&hours=17-25');
     expect(state).toEqual(DEFAULT_STATE);
     expect(parseQuery('?zip=80202&seats=abc&days=6')).toEqual({ ...DEFAULT_STATE, zip: '80202', daysPerWeek: 6 });
   });

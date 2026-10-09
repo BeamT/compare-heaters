@@ -9,6 +9,7 @@
   --orange: #ff9200;
   --shine: #ffbe00;
   --dusk: #0f3538;
+  --dark-teal: #0f2021;
   --fog: #829995;
   /* Tints and neutrals built from the site palette */
   --focal-tint: #fbf1cf;
@@ -20,6 +21,15 @@
   --sans: elza, Archivo, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --condensed: elza-condensed, Archivo, 'Arial Narrow', sans-serif;
   --mono: 'Azeret Mono', ui-monospace, monospace;
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 36px;
+  --space-7: 72px;
 
   /* Side gutter eases 32 → 16px between 1100 and 900px wide */
   --gutter: clamp(16px, 8vw - 56px, 32px);
@@ -51,8 +61,8 @@
 .ch .condensed { font-family: var(--condensed); font-stretch: 62%; font-weight: 600; letter-spacing: -0.01em; }
 
 /* ---- Inputs strip: dark band at the top, scrolls away with the page ---- */
-.ch .strip { background: var(--black); color: var(--off-white); padding: 10px var(--gutter) 12px; }
-.ch .strip-row { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: end; max-width: 1216px; margin: 0 auto; }
+.ch .strip { background: var(--black); color: var(--off-white); padding: 10px var(--gutter) var(--space-3); }
+.ch .strip-row { display: flex; flex-wrap: wrap; gap: var(--space-2) 10px; align-items: end; max-width: 1216px; margin: 0 auto; }
 .ch .field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .ch .field-label { display: flex; align-items: center; gap: 4px; height: 15px; font: 12px/1.2 var(--mono); text-transform: uppercase; letter-spacing: 0.05em; color: var(--on-dark-muted); white-space: nowrap; padding: 0; }
 .ch .field-label b { font-weight: 500; color: var(--off-white); }
@@ -93,9 +103,10 @@
 .ch .info:hover { color: var(--off-white); }
 
 /* ---- Results ---- */
-.ch .main { padding: 36px var(--gutter) 72px; max-width: 1280px; margin: 0 auto; }
+.ch .main { padding: var(--space-6) var(--gutter) var(--space-7); max-width: 1280px; margin: 0 auto; }
 .ch .status { margin: 0; font-size: 16px; color: var(--muted); }
-.ch .hint { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+.ch .status .retry { padding: 0; border: 0; background: none; color: var(--black); text-decoration: underline; cursor: pointer; }
+.ch .hint { font-size: 13px; color: var(--muted); margin: var(--space-2) 0 0; }
 
 /* Cost table: the site's spec-sheet look, rules instead of boxes */
 .ch .scroll { overflow-x: auto; }
@@ -200,8 +211,8 @@
 
 @media (max-width: 860px) {
   .ch { --col1: 30%; --addcol: 132px; --pill-h: 40px; }
-  .ch .strip { padding: 12px 16px; }
-  .ch .main { padding: 24px 16px 48px; }
+  .ch .strip { padding: var(--space-3) var(--space-4); }
+  .ch .main { padding: var(--space-5) var(--space-4) 48px; }
   .ch table.cost { font-size: 13px; }
   .ch table.cost thead th.title { font-size: 26px; }
   .ch .tab { font-size: 13px; padding-left: 10px; padding-right: 28px; }

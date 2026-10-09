@@ -9,8 +9,8 @@ export const COMPETITORS = OPTIONS.filter((o): o is Competitor => o !== 'focal')
 export interface PageState {
   /** Empty until entered. */
   zip: string;
-  /** Which of the ZIP's utilities, when it has several. */
-  utility: number;
+  /** The chosen utility's name, when the ZIP has several; empty for the ZIP's first. Stored by name so a rate refresh can't switch it. */
+  utility: string;
   /** Undefined until entered. */
   seats: number | undefined;
   occupancy: number;
@@ -21,7 +21,9 @@ export interface PageState {
   hidden: Competitor[];
 }
 
-export const DEFAULT_STATE: PageState = { zip: '', utility: 0, seats: undefined, ...PATIO_DEFAULTS, hidden: [] };
+export const MAX_SEATS = 9999;
+
+export const DEFAULT_STATE: PageState = { zip: '', utility: '', seats: undefined, ...PATIO_DEFAULTS, hidden: [] };
 
 /** One query-string parameter: how to write its part of the state, and how to read it back (undefined when invalid). */
 interface Param {
@@ -34,12 +36,17 @@ const int = (value: string, min: number, max: number) => {
   const n = Number(value);
   return /^\d+$/.test(value) && n >= min && n <= max ? n : undefined;
 };
+/** Reads a whole number from min to max into one field of the state. */
+const intParam = <K extends 'seats' | 'daysPerWeek'>(key: K, min: number, max: number) => (value: string) => {
+  const n = int(value, min, max);
+  return n === undefined ? undefined : ({ [key]: n } as Partial<PageState>);
+};
 const month = (value: string | undefined) => MONTHS.find(m => m === value);
 
 const PARAMS: Param[] = [
   { name: 'zip', write: s => s.zip, read: v => (/^\d{5}$/.test(v) ? { zip: v } : undefined) },
-  { name: 'utility', write: s => String(s.utility), read: v => { const utility = int(v, 0, 99); return utility === undefined ? undefined : { utility }; } },
-  { name: 'seats', write: s => (s.seats === undefined ? '' : String(s.seats)), read: v => { const seats = int(v, 1, 9999); return seats === undefined ? undefined : { seats }; } },
+  { name: 'utility', write: s => s.utility, read: utility => ({ utility }) },
+  { name: 'seats', write: s => (s.seats === undefined ? '' : String(s.seats)), read: intParam('seats', 1, MAX_SEATS) },
   {
     name: 'occupancy',
     write: s => String(Math.round(s.occupancy * 100)),
@@ -53,7 +60,7 @@ const PARAMS: Param[] = [
       return start && end ? { season: { start, end } } : undefined;
     },
   },
-  { name: 'days', write: s => String(s.daysPerWeek), read: v => { const daysPerWeek = int(v, 1, 7); return daysPerWeek === undefined ? undefined : { daysPerWeek }; } },
+  { name: 'days', write: s => String(s.daysPerWeek), read: intParam('daysPerWeek', 1, 7) },
   {
     name: 'hours',
     write: s => `${s.heatingHours.start}-${s.heatingHours.end}`,

@@ -86,7 +86,7 @@ export function pageModel(state: PageState, rates: ZipRates | undefined): PageMo
   const { zip, seats } = state;
   if (!zip || !seats) return { kind: 'missing', missing: [...(zip ? [] : ['zip' as const]), ...(seats ? [] : ['seats' as const])] };
   if (!rates) return { kind: 'loading' };
-  const utility = rates.utilities[state.utility] ? state.utility : 0;
+  const utility = Math.max(0, rates.utilities.findIndex(u => u.name === state.utility));
   const { eveningRate, source } = rates.utilities[utility]!;
   const results = calculate({
     patio: { ...state, seats },

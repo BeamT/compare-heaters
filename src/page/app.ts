@@ -1,10 +1,10 @@
-// Draws the page from the model and turns the visitor's input into state. No
-// math happens here: numbers and tooltips come from the model as text.
+// Draws the page from the model and turns the visitor's input into state. The
+// page never redoes the math: numbers and tooltips come from the model as text.
 import { MONTHS, type Month } from '../assumptions.ts';
 import { hoursBetween } from '../calculate.ts';
 import { lookupRates, type ZipRates } from '../rates.ts';
 import { pageModel, type CostTable } from './model.ts';
-import { parseQuery, toQuery, type Competitor, type PageState } from './state.ts';
+import { COMPETITORS, MAX_SEATS, parseQuery, toQuery, type Competitor, type PageState } from './state.ts';
 import css from './styles.css?inline';
 
 export interface MountOptions {
@@ -47,10 +47,10 @@ function strip(state: PageState): string {
   const { season, heatingHours: hours } = state;
   return `<div class="strip"><div class="strip-row">
     <label class="field zip"><span class="field-label">ZIP</span>
-      <input name="zip" type="text" inputmode="numeric" autocomplete="postal-code" maxlength="5" pattern="[0-9]{5}" placeholder="94110" value="${esc(state.zip)}"></label>
+      <input name="zip" type="text" inputmode="numeric" autocomplete="postal-code" maxlength="5" pattern="[0-9]{5}" placeholder="Required" value="${esc(state.zip)}"></label>
     <div class="field utility" hidden></div>
     <label class="field seats"><span class="field-label">Seats on patio</span>
-      <input name="seats" type="number" inputmode="numeric" min="1" step="1" placeholder="40" value="${state.seats ?? ''}"></label>
+      <input name="seats" type="number" inputmode="numeric" min="1" step="1" placeholder="Required" value="${state.seats ?? ''}"></label>
     <div class="field occupancy"><span class="field-label"><label for="ch-occupancy">Occupancy %</label> ${infoButton(OCCUPANCY_TIP, 'About occupancy')}</span>
       <select id="ch-occupancy" name="occupancy">${options(OCCUPANCIES, Math.round(state.occupancy * 100))}</select></div>
     <div class="field" role="group" aria-labelledby="ch-season"><span class="field-label" id="ch-season">Heating season</span>
@@ -68,7 +68,7 @@ function costTable(t: CostTable): string {
   const cols = `<colgroup><col class="label">${t.columns.map(() => '<col>').join('')}${add ? '<col class="add">' : ''}</colgroup>`;
   const tab = ({ key, label }: CostTable['columns'][number]) =>
     key === 'focal'
-      ? `<th scope="col" class="focal"><div class="tab focal">${label}</div></th>`
+      ? `<th scope="col" class="focal"><div class="tab focal">${esc(label)}</div></th>`
       : `<th scope="col"><div class="tab"><span>${esc(label)}</span><button type="button" class="remove" data-hide="${key}" aria-label="Remove ${esc(label)}" title="Remove ${esc(label)}">${icon('x')}</button></div></th>`;
   const addTabs = add
     ? `<th class="add"><div class="add-tabs">${t.hidden.map(({ key, label }) => `<button type="button" class="add-tab" data-show="${key}" title="Compare with ${esc(label)}">${icon('plus')}<span>${esc(label)}</span></button>`).join('')}</div></th>`
@@ -77,10 +77,10 @@ function costTable(t: CostTable): string {
   const focalClass = (i: number) => (t.columns[i]?.key === 'focal' ? ' class="focal"' : '');
   const body = t.sections
     .map(section => {
-      const group = `<tr class="group"><td>${section.title}</td>${t.columns.map((_, i) => `<td${focalClass(i)}></td>`).join('')}${addCell}</tr>`;
+      const group = `<tr class="group"><td>${esc(section.title)}</td>${t.columns.map((_, i) => `<td${focalClass(i)}></td>`).join('')}${addCell}</tr>`;
       const rows = section.rows.map(row =>
         `<tr class="${row.kind}"><th scope="row">${esc(row.label)}</th>${row.cells
-          .map((c, i) => `<td${focalClass(i)}><button type="button" class="value" data-tip="${esc(c.tip)}">${c.text}</button></td>`)
+          .map((c, i) => `<td${focalClass(i)}><button type="button" class="value" data-tip="${esc(c.tip)}">${esc(c.text)}</button></td>`)
           .join('')}${addCell}</tr>`);
       return group + rows.join('');
     })
@@ -134,14 +134,14 @@ export function mount(root: HTMLElement, { ratesUrl }: MountOptions): void {
 
     const utilities = model.kind === 'ready' ? model.utilities : [];
     utilityField.hidden = utilities.length < 2;
-    const picker = utilities.length < 2 ? '' : `<label class="field-label" for="ch-utility">Utility</label><select id="ch-utility" name="utility">${options(utilities.map((_, i) => i), state.utility, i => utilities[i]!)}</select>`;
+    const picker = utilities.length < 2 ? '' : `<label class="field-label" for="ch-utility">Utility</label><select id="ch-utility" name="utility">${options(utilities, state.utility || utilities[0]!)}</select>`;
     if (utilityField.dataset.for !== picker) {
       utilityField.innerHTML = picker;
       utilityField.dataset.for = picker;
     }
 
     if (rates?.zip === state.zip && rates.value === 'error') {
-      results.innerHTML = `<p class="status">Couldn't load energy rates for ${esc(state.zip)}. Check your connection and try again.</p>`;
+      results.innerHTML = `<p class="status">Couldn't load energy rates for ${esc(state.zip)}. Check your connection and <button type="button" class="retry">try again</button>.</p>`;
     } else if (model.kind === 'missing') {
       const what = model.missing.map(m => (m === 'zip' ? 'your ZIP' : 'the seats on your patio')).join(' and ');
       results.innerHTML = `<p class="status">Enter ${what} to see your comparison.</p>`;
@@ -168,15 +168,15 @@ export function mount(root: HTMLElement, { ratesUrl }: MountOptions): void {
         const digits = value.replace(/\D/g, '').slice(0, 5);
         if (digits !== value) el.value = digits;
         const zip = digits.length === 5 ? digits : '';
-        if (zip !== state.zip) update({ zip, utility: 0 });
+        if (zip !== state.zip) update({ zip, utility: '' });
         break;
       }
       case 'seats': {
         const seats = Number(value);
-        update({ seats: Number.isInteger(seats) && seats >= 1 && seats <= 9999 ? seats : undefined });
+        update({ seats: Number.isInteger(seats) && seats >= 1 && seats <= MAX_SEATS ? seats : undefined });
         break;
       }
-      case 'utility': return update({ utility: Number(value) });
+      case 'utility': return update({ utility: value });
       case 'occupancy': return update({ occupancy: Number(value) / 100 });
       case 'days': return update({ daysPerWeek: Number(value) });
       case 'seasonStart': return update({ season: { ...state.season, start: value as Month } });
@@ -186,14 +186,18 @@ export function mount(root: HTMLElement, { ratesUrl }: MountOptions): void {
     }
   });
 
-  // ---- Show / hide columns ----
+  // ---- Show / hide columns, and retrying a failed rate lookup ----
   root.addEventListener('click', e => {
+    if ((e.target as Element).closest('.retry')) {
+      rates = undefined;
+      return update({});
+    }
     const button = (e.target as Element).closest<HTMLElement>('[data-hide], [data-show]');
     if (!button) return;
     const hide = button.dataset.hide as Competitor | undefined;
     const show = button.dataset.show as Competitor | undefined;
     const hidden = hide ? [...state.hidden, hide] : state.hidden.filter(c => c !== show);
-    update({ hidden: (['propane', 'gas', 'electric'] as const).filter(c => hidden.includes(c)) });
+    update({ hidden: COMPETITORS.filter(c => hidden.includes(c)) });
     // Keep keyboard focus in the header after its buttons are redrawn.
     root.querySelector<HTMLElement>(show ? `[data-hide="${show}"]` : `[data-show="${hide}"]`)?.focus();
   });

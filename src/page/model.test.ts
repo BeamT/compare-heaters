@@ -82,12 +82,18 @@ describe('cost table', () => {
 
 describe('utility', () => {
   it("offers a picker when the ZIP has several utilities, and uses the chosen one's rate", () => {
-    const model = pageModel({ ...sf, utility: 1 }, sfRates);
+    const model = pageModel({ ...sf, utility: 'Other Power' }, sfRates);
     if (model.kind !== 'ready') throw new Error(model.kind);
     expect(model.utilities).toEqual(['PG&E', 'Other Power']);
     const focalEnergy = model.table.sections[2]!.rows[0]!.cells[0]!.tip;
     expect(focalEnergy).toContain('× $0.375/kWh');
     expect(focalEnergy).toContain('(Other Power 2024 average × 1.25 for evenings)');
+  });
+
+  it("falls back to the ZIP's first utility when a link names one it doesn't have", () => {
+    const model = pageModel({ ...sf, utility: 'Gone Electric' }, sfRates);
+    if (model.kind !== 'ready') throw new Error(model.kind);
+    expect(model.table.sections[2]!.rows[0]!.cells[0]!.tip).toContain('× $0.494/kWh');
   });
 });
 
