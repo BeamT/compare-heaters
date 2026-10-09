@@ -53,7 +53,7 @@ export function monthsIn({ start, end }: MonthRange): number[] {
 }
 
 /** Hours from start to end; an end at or before the start runs past midnight. */
-function hoursBetween({ start, end }: HourRange): number {
+export function hoursBetween({ start, end }: HourRange): number {
   return end > start ? end - start : end + 24 - start;
 }
 

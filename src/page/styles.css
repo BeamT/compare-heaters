@@ -1,0 +1,212 @@
+/* Every rule is scoped to the calculator's root, .ch, so it can sit inside
+   another page. Colors are focalheat.co's Webflow variables; type is the
+   site's Elza / Elza Condensed / Azeret Mono, with Archivo as the fallback. */
+.ch {
+  --black: #0f0a0a;
+  --off-white: #fafaf0;
+  --light-gray: #eeeee4;
+  --yellow: #f8e08e;
+  --orange: #ff9200;
+  --shine: #ffbe00;
+  --dusk: #0f3538;
+  --fog: #829995;
+  /* Tints and neutrals built from the site palette */
+  --focal-tint: #fbf1cf;
+  --rule: #d9d9cc;
+  --border-strong: #b9b9aa;
+  --muted: #6b6661;
+  --on-dark-muted: rgba(250, 250, 240, 0.62);
+
+  --sans: elza, Archivo, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --condensed: elza-condensed, Archivo, 'Arial Narrow', sans-serif;
+  --mono: 'Azeret Mono', ui-monospace, monospace;
+
+  /* Side gutter eases 32 → 16px between 1100 and 900px wide */
+  --gutter: clamp(16px, 8vw - 56px, 32px);
+  --col1: 28%;
+  --addcol: 190px;
+  --pill-h: 44px;
+
+  position: relative;
+  background: var(--off-white);
+  color: var(--black);
+  font: 400 15px/1.5 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+.ch *, .ch *::before, .ch *::after { box-sizing: border-box; }
+.ch ::selection { background: var(--yellow); color: var(--black); }
+.ch button, .ch input, .ch select { font: inherit; color: inherit; margin: 0; }
+.ch button { -webkit-tap-highlight-color: transparent; }
+.ch input, .ch select {
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 6px 8px;
+  background: #fff;
+  caret-color: var(--orange);
+  font-variant-numeric: tabular-nums;
+}
+.ch :focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+.ch input:focus, .ch select:focus { outline: 2px solid var(--orange); outline-offset: 0; }
+.ch .ico { width: 1em; height: 1em; flex: none; stroke: currentColor; fill: none; stroke-width: 2.25; stroke-linecap: round; stroke-linejoin: round; }
+.ch .condensed { font-family: var(--condensed); font-stretch: 62%; font-weight: 600; letter-spacing: -0.01em; }
+
+/* ---- Inputs strip: dark band at the top, scrolls away with the page ---- */
+.ch .strip { background: var(--black); color: var(--off-white); padding: 10px var(--gutter) 12px; }
+.ch .strip-row { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: end; max-width: 1216px; margin: 0 auto; }
+.ch .field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ch .field-label { display: flex; align-items: center; gap: 4px; height: 15px; font: 12px/1.2 var(--mono); text-transform: uppercase; letter-spacing: 0.05em; color: var(--on-dark-muted); white-space: nowrap; padding: 0; }
+.ch .field-label b { font-weight: 500; color: var(--off-white); }
+.ch .strip input, .ch .strip select {
+  height: 32px;
+  padding: 0 7px;
+  font-size: 13.5px;
+  background: rgba(250, 250, 240, 0.08);
+  border-color: rgba(250, 250, 240, 0.28);
+  color: var(--off-white);
+}
+.ch .strip input:hover, .ch .strip select:hover { border-color: rgba(250, 250, 240, 0.55); }
+.ch .strip input::placeholder { color: var(--on-dark-muted); }
+.ch .strip select option { color: var(--black); background: #fff; }
+.ch .strip .zip input { width: 70px; }
+.ch .strip .seats input { width: 70px; }
+.ch .strip .utility select { width: 150px; }
+.ch .strip .occupancy select { width: 74px; }
+.ch .strip .days select { width: 58px; }
+.ch .pair { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--on-dark-muted); }
+.ch .pair select.month { width: 66px; }
+.ch .pair select.time { width: 96px; }
+.ch .info {
+  display: inline-grid;
+  place-items: center;
+  /* A bigger tap target than it looks, without changing the label's height */
+  width: 24px;
+  height: 24px;
+  margin: -5px -5px -5px -3px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  font-size: 13px;
+  cursor: help;
+}
+.ch .info:hover { color: var(--off-white); }
+
+/* ---- Results ---- */
+.ch .main { padding: 36px var(--gutter) 72px; max-width: 1280px; margin: 0 auto; }
+.ch .status { margin: 0; font-size: 16px; color: var(--muted); }
+.ch .hint { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+
+/* Cost table: the site's spec-sheet look, rules instead of boxes */
+.ch .scroll { overflow-x: auto; }
+.ch table.cost { width: 100%; min-width: 600px; border-collapse: separate; border-spacing: 0; table-layout: fixed; font-size: 14px; }
+.ch table.cost col.label { width: var(--col1); }
+.ch table.cost col.add { width: var(--addcol); }
+.ch table.cost th, .ch table.cost td { padding: 9px 14px; border-bottom: 1px solid var(--rule); text-align: right; vertical-align: middle; font-weight: 400; }
+.ch table.cost th:first-child, .ch table.cost td:first-child { text-align: left; padding-left: 0; }
+
+/* Header row: section title, then column tabs */
+.ch table.cost thead th { border-bottom: 1px solid var(--black); padding: 0 3px; vertical-align: bottom; }
+.ch table.cost thead th.focal { padding: 0; border-bottom-color: var(--orange); }
+.ch table.cost thead th.title { padding: 0 0 12px; font-size: 30px; font-weight: 600; line-height: 1; }
+.ch table.cost thead th.add { padding-bottom: 8px; text-align: left; }
+.ch .tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: var(--pill-h);
+  padding: 0 32px;
+  border-radius: 10px 10px 0 0;
+  background: var(--light-gray);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.1;
+  text-align: center;
+}
+.ch .tab.focal { background: var(--orange); }
+.ch .tab .remove {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+.ch .tab .remove:hover { background: var(--black); color: var(--off-white); }
+.ch .add-tabs { display: flex; flex-direction: column; gap: 6px; }
+.ch .add-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 34px;
+  padding: 0 14px 0 10px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 40px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background-color 0.2s;
+}
+.ch .add-tab span { overflow: hidden; text-overflow: ellipsis; }
+.ch .add-tab:hover { border-style: solid; border-color: var(--black); color: var(--black); background: var(--yellow); }
+
+/* Body rows */
+.ch table.cost td.focal { background: var(--focal-tint); }
+.ch table.cost tr.group td { font: 400 12px/1.2 var(--mono); text-transform: uppercase; letter-spacing: 0.05em; padding-top: 28px; padding-bottom: 8px; border-bottom-color: var(--black); }
+.ch table.cost tr.perSeat td { padding-top: 14px; padding-bottom: 14px; }
+.ch table.cost tr.perSeat .value { font-family: var(--condensed); font-stretch: 62%; font-weight: 600; font-size: 26px; line-height: 1; }
+
+/* A number that opens its formula */
+.ch .value {
+  padding: 0;
+  border: 0;
+  border-bottom: 1px dotted var(--border-strong);
+  background: none;
+  font-variant-numeric: tabular-nums;
+  cursor: help;
+}
+.ch .value:hover, .ch .value[aria-describedby] { border-bottom-color: var(--black); }
+
+.ch .tip {
+  position: absolute;
+  z-index: 20;
+  max-width: min(380px, calc(100% - 16px));
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--black);
+  color: var(--off-white);
+  font: 12px/1.5 var(--mono);
+  white-space: pre-line;
+  box-shadow: 0 8px 24px rgba(15, 10, 10, 0.22);
+  pointer-events: none;
+}
+.ch .tip[hidden] { display: none; }
+
+@media (max-width: 860px) {
+  .ch { --col1: 30%; --addcol: 132px; --pill-h: 40px; }
+  .ch .strip { padding: 12px 16px; }
+  .ch .main { padding: 24px 16px 48px; }
+  .ch table.cost { font-size: 13px; }
+  .ch table.cost thead th.title { font-size: 26px; }
+  .ch .tab { font-size: 13px; padding-left: 10px; padding-right: 28px; }
+  .ch .tab.focal { padding-right: 10px; }
+  /* Row labels stay put while the numbers scroll sideways */
+  .ch table.cost th:first-child, .ch table.cost td:first-child { position: sticky; left: 0; z-index: 1; background: var(--off-white); padding-right: 10px; }
+  .ch table.cost tr.perSeat .value { font-size: 20px; }
+}
