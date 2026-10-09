@@ -26,6 +26,6 @@ export const FEATURES: readonly Feature[] = [
   row('No fuel to buy, store or swap', [1, 0, 1, 1], 'Plugs into a standard 120V outlet', "Gas's line is in its install cost."),
   row('Nothing burning near guests', [1, 0, 0, 1], 'No flame, no exhaust to breathe'),
   row('Nothing for guests or staff to trip over', [1, 0, 1, 1], 'Mounted overhead', 'Propane towers stand on the patio floor.'),
-  row('Heat follows your tables when you rearrange', [1, 1, 0, 0], 'Slides anywhere on the rail', 'Gas and electric are fixed where installed; towers can be wheeled anywhere; Focal moves within its rail.'),
+  row('Easy to move heat when you move seats', [1, 1, 0, 0], 'Heaters slide on the rail', 'Gas and electric are fixed where installed; towers can be wheeled anywhere; Focal moves within its rail.'),
   row('Nothing to maintain', [1, 0, 0, 0], 'We monitor and fix issues', 'Focal subscription'),
 ];

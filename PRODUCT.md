@@ -25,7 +25,7 @@ web
 
 ## Positioning
 
-- Focal's cost edge depends on local rates and patio size; the experience sets it apart too: per-seat heat guests set themselves, runs on a schedule, nothing burning, monitored. The tool shows both.
+- Focal's cost edge depends on local rates and patio size; the experience sets it apart too: per-seat heat guests set themselves, turns off by itself when guests leave, nothing burning, monitored. The tool shows both.
 - Focal's energy scales with occupancy (heats a seat only while it's occupied); other heaters cover 4–6 seats and run whenever anyone in their area is seated.
 - Credibility through transparency: every calculated number shows its formula with real values filled in.
 
@@ -40,7 +40,7 @@ web
 
 - Restaurants only. Results are estimates, not quotes. Competitors are categories, never named brands.
 - Formula tooltips must work by tap on mobile.
-- Terminology: Duo (the heater), seats/covers, operating hours, heating season.
+- Terminology: Duo (the heater), seats/covers, heating months, heating hours.
 - Warranty: 3 years (matches focalheat.co).
 
 ## Brand Commitments

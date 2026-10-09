@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ZipRates } from '../rates.ts';
-import { pageModel, type CostTable } from './model.ts';
+import { pageModel, shortUtility, type CostTable } from './model.ts';
 import { DEFAULT_STATE, type PageState } from './state.ts';
 
 // SF 40-seat patio at default values, with the evening rate the spec's tooltip example uses.
@@ -40,7 +40,7 @@ describe('cost table', () => {
       '# Yearly',
       'Energy: $3,021',
       'Staff time: $0',
-      'Maintenance & replacement: $2,000',
+      'Upkeep & replacement: $2,000',
       'Subscription: $1,400',
       'Yearly total: $6,421',
       'Yearly per seat: $161',
@@ -53,7 +53,7 @@ describe('cost table', () => {
     expect(row('Energy').cells.map(c => c.text)).toEqual(['$3,021', '$15,766', '$2,155', '$8,391']);
     expect(row('Staff time').cells[1]).toEqual({
       text: '$7,743',
-      tip: '$7,743 = (630.7 tanks × 20 min + 10 towers × 5 min × 212 nights) ÷ 60 × $20/hr',
+      tip: '$7,743 = (630.7 tanks × 20 min + 10 towers × 5 min × 212 days) ÷ 60 × $20/hr',
     });
     expect(row('Install').cells[1]).toEqual({ text: '$0', tip: 'Nothing to install: towers stand on the patio floor.' });
   });
@@ -68,7 +68,7 @@ describe('cost table', () => {
     const labels = t.sections.flatMap(s => s.rows.map(r => r.label));
     expect(labels).not.toContain('Staff time');
     expect(labels).toContain('Subscription');
-    expect(t.sections[0]!.rows[0]!.cells.map(c => c.text)).toEqual(['$55,955', '$67,126']);
+    expect(t.sections[0]!.rows[0]!.cells.map(c => c.text)).toEqual(['$55,955', '$66,076']);
   });
 
   it('labels the ZIP-based evening rate as an estimate wherever it shows', () => {
@@ -115,7 +115,7 @@ describe('experience card', () => {
       'No fuel to buy, store or swap: ✓ — ✓ ✓ (Plugs into a standard 120V outlet)',
       'Nothing burning near guests: ✓ — — ✓ (No flame, no exhaust to breathe)',
       'Nothing for guests or staff to trip over: ✓ — ✓ ✓ (Mounted overhead)',
-      'Heat follows your tables when you rearrange: ✓ ✓ — — (Slides anywhere on the rail)',
+      'Easy to move heat when you move seats: ✓ ✓ — — (Heaters slide on the rail)',
       'Nothing to maintain: ✓ — — — (We monitor and fix issues)',
     ]);
   });
@@ -134,7 +134,7 @@ describe('revenue upside', () => {
   };
   const texts = (state: PageState) => {
     const r = lines(state);
-    return [r.moreMonthsOpen, r.moreTablesSeated, r.biggerChecks, r.total, r.paysForItself].map(c => c.text);
+    return [r.moreMonthsOpen, r.moreGuestsSeated, r.biggerChecks, r.total].map(c => c.text);
   };
 
   it('stays closed for visitors who already heat their patio', () => {
@@ -142,25 +142,19 @@ describe('revenue upside', () => {
   });
 
   it('shows a dash on every line until its own input is filled', () => {
-    expect(texts(noHeat)).toEqual(['—', '—', '—', '—', '—']);
+    expect(texts(noHeat)).toEqual(['—', '—', '—', '—']);
     expect(lines(noHeat).moreMonthsOpen.tip).toBe('');
-    expect(texts({ ...noHeat, revenue: { ...noHeat.revenue, averageCheck: 45, extraGuestsPerColdNight: 6 } }))
-      .toEqual(['—', '+$57,330/yr', '—', '+$57,330/yr', '1.4 seasons']);
+    expect(texts({ ...noHeat, revenue: { ...noHeat.revenue, averageCheck: 45, extraGuestsPerColdDay: 6 } }))
+      .toEqual(['—', '+$57,330/yr', '—', '+$57,330/yr']);
   });
 
-  it('adds up the lines and when Focal pays for itself, each with its formula', () => {
-    const estimate = { ...noHeat.revenue, averageCheck: 45, closedMonths: { start: 'Jan', end: 'Feb' }, extraGuestsPerColdNight: 6 } as const;
+  it('adds up the lines, each with its formula', () => {
+    const estimate = { ...noHeat.revenue, averageCheck: 45, monthsClosed: 2, extraGuestsPerColdDay: 6 } as const;
     const r = lines({ ...noHeat, revenue: estimate });
-    expect(texts({ ...noHeat, revenue: estimate })).toEqual(['+$218,400/yr', '+$40,950/yr', '—', '+$259,350/yr', '0.2 seasons']);
-    expect(r.total.tip).toBe('$259,350/yr = $218,400 more months + $40,950 more tables');
-    expect(r.paysForItself.tip).toBe('0.2 heating seasons = $23,850 Focal upfront ÷ ($259,350 × 40% margin − $6,421 Focal yearly cost)');
+    expect(texts({ ...noHeat, revenue: estimate })).toEqual(['+$218,400/yr', '+$40,950/yr', '—', '+$259,350/yr']);
+    expect(r.total.tip).toBe('$259,350/yr = $218,400 more months + $40,950 more guests');
   });
 
-  it('warns when some closed months fall outside the heating season', () => {
-    const closed = (start: 'Jan' | 'Apr', end: 'Feb' | 'May') => ({ ...noHeat, revenue: { ...noHeat.revenue, averageCheck: 45, closedMonths: { start, end } } });
-    expect(lines(closed('Apr', 'May')).warning).toBe('1 of the 2 closed months falls inside your heating season (Oct–Apr); only that one counts.');
-    expect(lines(closed('Jan', 'Feb')).warning).toBeUndefined();
-  });
 });
 
 describe('assumptions panel', () => {
@@ -183,6 +177,7 @@ describe('assumptions panel', () => {
       '120V outlets already in place = false [Natural gas]',
       'Installer rate = 100 $/hr [Natural gas, Conventional electric]',
       'Focal install time = 2 hrs/rail []',
+      'Duo lifespan = 10 yrs []',
     ]);
     expect(p.groups[0]!.rows[0]!.description).toBe('What you pay per kWh during evening service. Use the rate from your bill if you know it.');
   });
@@ -242,5 +237,14 @@ describe('before there are results', () => {
     expect(pageModel({ ...DEFAULT_STATE, seats: 40 }, undefined)).toEqual({ kind: 'missing', missing: ['zip'] });
     expect(pageModel({ ...DEFAULT_STATE, zip: '94110' }, sfRates)).toEqual({ kind: 'missing', missing: ['seats'] });
     expect(pageModel(sf, undefined)).toEqual({ kind: 'loading' });
+  });
+});
+
+describe('utility names in the top bar', () => {
+  it('shortens long names and leaves short ones alone', () => {
+    expect(shortUtility('Clay Electric Cooperative, Inc - (FL)')).toBe('Clay Elec Coop');
+    expect(shortUtility('Sawnee Electric Membership Corporation')).toBe('Sawnee EMC');
+    expect(shortUtility('Los Angeles Department of Water & Power')).toBe('Los Angeles Dept of Water & Power');
+    expect(shortUtility('PG&E')).toBe('PG&E');
   });
 });

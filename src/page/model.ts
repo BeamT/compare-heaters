@@ -48,12 +48,9 @@ export type Revenue =
   | {
       open: true;
       moreMonthsOpen: Cell;
-      moreTablesSeated: Cell;
+      moreGuestsSeated: Cell;
       biggerChecks: Cell;
       total: Cell;
-      paysForItself: Cell;
-      /** When some closed months fall outside the heating season. */
-      warning?: string;
     };
 
 /** The assumptions a visitor might know differently, editable in the panel. */
@@ -113,7 +110,7 @@ const SECTIONS: Array<{ title: string; rows: RowSpec[] }> = [
     rows: [
       ['Energy', 'energy'],
       ['Staff time', 'staffTime'],
-      ['Maintenance & replacement', 'maintenance'],
+      ['Upkeep & replacement', 'maintenance'],
       ['Subscription', 'subscription'],
       ['Yearly total', 'yearly', 'total'],
       ['Yearly per seat', 'yearlyPerSeat', 'perSeat'],
@@ -161,7 +158,7 @@ export function pageModel(state: PageState, rates: ZipRates | undefined): PageMo
       })),
     },
     experience: { rows: FEATURES.map(f => ({ label: f.label, checks: shown.map(o => f.has[o]), how: f.focal })) },
-    revenue: state.heatToday ? { open: false } : revenue(results.revenue, state),
+    revenue: state.heatToday ? { open: false } : revenue(results.revenue),
     panel: panel(state.tab, shown, assumptions, {
       // The row's description already points to the visitor's bill.
       eveningElectricRate: ownRate ? 'Your rate' : `Estimate: ${source}`,
@@ -171,26 +168,14 @@ export function pageModel(state: PageState, rates: ZipRates | undefined): PageMo
   };
 }
 
-function revenue(r: RevenueResult, { season }: PageState): Revenue {
+function revenue(r: RevenueResult): Revenue {
   const perYear = (line: Explained | null): Cell => (line ? { text: `+${formatNumber(line.value, 'usd')}/yr`, tip: tooltip(line) } : BLANK);
-  const outside = r.closedMonths - r.closedMonthsInSeason;
-  const inSeason = r.closedMonthsInSeason;
-  const seasonName = `${season.start}–${season.end}`;
-  const warning = !outside
-    ? undefined
-    : !inSeason
-      ? `None of the closed months fall inside your heating season (${seasonName}), so none count.`
-      : inSeason === 1
-        ? `1 of the ${r.closedMonths} closed months falls inside your heating season (${seasonName}); only that one counts.`
-        : `${inSeason} of the ${r.closedMonths} closed months fall inside your heating season (${seasonName}); only those count.`;
   return {
     open: true,
     moreMonthsOpen: perYear(r.moreMonthsOpen),
-    moreTablesSeated: perYear(r.moreTablesSeated),
+    moreGuestsSeated: perYear(r.moreGuestsSeated),
     biggerChecks: perYear(r.biggerChecks),
     total: perYear(r.total),
-    paysForItself: r.paysForItself ? { text: `${formatNumber(r.paysForItself.value, 'tenths')} seasons`, tip: tooltip(r.paysForItself) } : BLANK,
-    ...(warning === undefined ? {} : { warning }),
   };
 }
 
@@ -221,4 +206,20 @@ function panel(selected: PanelTab, shown: OptionKey[], assumptions: Assumptions,
     affectsHeading: tab === 'all' ? 'Affects' : 'Also affects',
     groups,
   };
+}
+
+/** A utility's name shortened to fit the top bar, e.g. "Clay Electric Cooperative, Inc - (FL)" → "Clay Elec Coop". */
+export function shortUtility(name: string): string {
+  return name
+    .replace(/\s*-?\s*\([A-Z]{2}\)$/, '')
+    .replace(/,?\s+Inc\.?$/i, '')
+    .replace(/Electric Membership (Corporation|Corp\.?)/g, 'EMC')
+    .replace(/Cooperative/g, 'Coop')
+    .replace(/Corporation/g, 'Corp')
+    .replace(/Company/g, 'Co')
+    .replace(/Association/g, 'Assn')
+    .replace(/Department/g, 'Dept')
+    .replace(/Electric/g, 'Elec')
+    .replace(/\s+-\s*$/, '')
+    .trim();
 }

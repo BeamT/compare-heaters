@@ -1,11 +1,12 @@
 // Draws the page from the model and turns the visitor's input into state. The
 // page never redoes the math: numbers and tooltips come from the model as text.
-import { MONTHS, REVENUE_ASSUMPTIONS, type Month } from '../assumptions.ts';
-import { hoursBetween } from '../calculate.ts';
+// It only words the visitor's own inputs back to them, like the revenue
+// estimate's basis line.
+import { REVENUE_ASSUMPTIONS } from '../assumptions.ts';
 import { lookupRates, type ZipRates } from '../rates.ts';
 import { morph } from './morph.ts';
-import { pageModel, type Cell, type CostTable, type Experience, type Panel, type PanelRow, type Revenue } from './model.ts';
-import { COMPETITORS, MAX_SEATS, parseQuery, setParam, toQuery, type Competitor, type PageState, type PanelTab } from './state.ts';
+import { pageModel, shortUtility, type Cell, type CostTable, type Experience, type Panel, type PanelRow, type Revenue } from './model.ts';
+import { COMPETITORS, MAX_SEATS, parseQuery, setParam, toQuery, withClosedCapped, type Competitor, type PageState, type PanelTab } from './state.ts';
 import css from './styles.css?inline';
 
 export interface MountOptions {
@@ -13,13 +14,9 @@ export interface MountOptions {
   ratesUrl: URL;
 }
 
-const OCCUPANCY_TIP = 'Only the heaters your guests need are on, rounded up to whole heaters. A Focal Duo covers 2 seats; other heaters cover 4–6, so a few guests keep a whole heater running.';
-const HOURS_TIP = "Just the hours you'd run heaters. A patio open at lunch often doesn't need heat.";
-
 const ICONS = {
   x: '<path d="M6 6l12 12M18 6L6 18"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
-  info: '<circle cx="12" cy="12" r="9.5"/><path d="M12 11v6M12 7.5v.01"/>',
   check: '<path d="M4.5 12.5l5 5L19.5 7"/>',
   dash: '<path d="M7 12h10"/>',
 };
@@ -27,42 +24,29 @@ const icon = (name: keyof typeof ICONS) => `<svg class="ico" viewBox="0 0 24 24"
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-/** 17.5 → "5:30 pm". */
-function clock(hour: number): string {
-  const h = Math.floor(hour) % 24;
-  const minutes = hour % 1 ? ':30' : '';
-  return `${h % 12 || 12}${minutes} ${h < 12 ? 'am' : 'pm'}`;
-}
-
-/** Every half hour, starting mid-morning so evening service reads in order. */
-const TIMES = Array.from({ length: 48 }, (_, i) => (10 + i / 2) % 24);
 const OCCUPANCIES = Array.from({ length: 19 }, (_, i) => 10 + i * 5);
-const DAYS = [1, 2, 3, 4, 5, 6, 7];
+const upTo = (n: number) => Array.from({ length: n }, (_, i) => i + 1);
+const plural = (n: number, noun: string) => `${n} ${noun}${n === 1 ? '' : 's'}`;
+const MONTH_COUNTS = upTo(12);
+const DAYS = upTo(7);
+const HOURS = upTo(24);
 
 function options<T extends string | number>(values: readonly T[], selected: T | undefined, label: (v: T) => string = String): string {
   return values.map(v => `<option value="${v}"${v === selected ? ' selected' : ''}>${esc(label(v))}</option>`).join('');
 }
 
-const infoButton = (tip: string, label: string) =>
-  `<button type="button" class="info" data-tip="${esc(tip)}" aria-label="${esc(label)}">${icon('info')}</button>`;
-
 function strip(state: PageState): string {
-  const { season, heatingHours: hours } = state;
   return `<div class="strip"><div class="strip-row">
     <label class="field zip"><span class="field-label">ZIP</span>
       <input name="zip" type="text" inputmode="numeric" autocomplete="postal-code" maxlength="5" pattern="[0-9]{5}" placeholder="Required" value="${esc(state.zip)}"></label>
     <div class="field utility" hidden></div>
-    <label class="field seats"><span class="field-label">Seats on patio</span>
+    <label class="field seats"><span class="field-label">Seats</span>
       <input name="seats" type="number" inputmode="numeric" min="1" step="1" placeholder="Required" value="${state.seats ?? ''}"></label>
-    <div class="field occupancy"><span class="field-label"><label for="ch-occupancy">Occupancy %</label> ${infoButton(OCCUPANCY_TIP, 'About occupancy')}</span>
-      <select id="ch-occupancy" name="occupancy">${options(OCCUPANCIES, Math.round(state.occupancy * 100))}</select></div>
-    <div class="field" role="group" aria-labelledby="ch-season"><span class="field-label" id="ch-season">Heating season</span>
-      <div class="pair"><select class="month" name="seasonStart" aria-label="Season starts">${options(MONTHS, season.start)}</select><span>to</span>
-      <select class="month" name="seasonEnd" aria-label="Season ends">${options(MONTHS, season.end)}</select></div></div>
-    <label class="field days"><span class="field-label">Days/wk</span><select name="days">${options(DAYS, state.daysPerWeek)}</select></label>
-    <div class="field" role="group" aria-labelledby="ch-hours"><span class="field-label"><span id="ch-hours">Heating hours</span> · <b class="hours-per-night"></b> ${infoButton(HOURS_TIP, 'About heating hours')}</span>
-      <div class="pair"><select class="time" name="hoursStart" aria-label="Heaters on at">${options(TIMES, hours.start, clock)}</select><span>to</span>
-      <select class="time" name="hoursEnd" aria-label="Heaters off at">${options(TIMES, hours.end, clock)}</select></div></div>
+    <div class="field occupancy"><label class="field-label" for="ch-occupancy">Occupancy</label>
+      <select id="ch-occupancy" name="occupancy">${options(OCCUPANCIES, Math.round(state.occupancy * 100), pct => `${pct}%`)}</select></div>
+    <label class="field count"><span class="field-label">Months/yr</span><select name="months">${options(MONTH_COUNTS, state.heatingMonths)}</select></label>
+    <label class="field count"><span class="field-label">Days/wk</span><select name="days">${options(DAYS, state.daysPerWeek)}</select></label>
+    <label class="field count"><span class="field-label">Hrs/day</span><select name="hours">${options(HOURS, state.hoursPerDay)}</select></label>
   </div></div>`;
 }
 
@@ -138,25 +122,26 @@ function revenue(state: PageState, r: Revenue): string {
   if (!r.open) return `<section class="card revenue">${intro}</section>`;
 
   const { revenue: inputs } = state;
-  const closed = inputs.closedMonths;
-  const closedPicker = `<span class="pair"><select name="closedStart" aria-label="Closed from"><option value=""${closed ? '' : ' selected'}>None</option>${options(MONTHS, closed?.start)}</select>${
-    closed ? `${unit('to')}<select name="closedEnd" aria-label="Closed until">${options(MONTHS, closed.end)}</select>` : ''}</span>`;
-  const group = (title: string) => `<tr class="group"><td colspan="3">${title}</td></tr>`;
+  // The patio numbers the estimate is built on, so a visitor who skipped the top bar sees them.
+  const basis = `Based on ${state.seats} seats, ${Math.round(state.occupancy * 100)}% full, ${plural(state.heatingMonths, 'month')} a year, ${plural(state.daysPerWeek, 'day')} a week, ${plural(state.hoursPerDay, 'hour')} a day. Change these at the top.`;
+  // Only heated months can be closed for cold, so the choices stop at the heating months.
+  const closedPicker = `<select class="closed" name="closed" aria-label="Months closed for cold"><option value=""${inputs.monthsClosed ? '' : ' selected'}>None</option>${
+    options(upTo(state.heatingMonths), inputs.monthsClosed, n => plural(n, 'month'))}</select>`;
+  // A note sits under the group's rule, so the header still reads as a header.
+  const group = (title: string, note = '') => `<tr class="group"><td colspan="3">${title}</td></tr>${note && `<tr class="note"><td colspan="3">${esc(note)}</td></tr>`}`;
   const row = (label: string, description: string, input: string, cell?: Cell, cls = '') =>
     `<tr${cls ? ` class="${cls}"` : ''}><th scope="row">${described(label, description)}</th><td class="input">${input}</td><td class="number">${cell ? value(cell) : ''}</td></tr>`;
   return `<section class="card revenue">${intro}
     <table class="lines">
       ${group('About your guests')}
-      ${row('Average check per guest', 'What one guest spends on average.', `${unit('$')}${numberInput('check', inputs.averageCheck, { label: 'Average check per guest', placeholder: 'Required' })}`, undefined, 'shared')}
+      ${row('Average check per guest', 'What one guest spends on average.', `<span class="unit before">$</span>${numberInput('check', inputs.averageCheck, { label: 'Average check per guest', placeholder: 'Required' })}`, undefined, 'shared')}
       ${row(REVENUE_ASSUMPTIONS.timeAtTable.label, REVENUE_ASSUMPTIONS.timeAtTable.description, `${numberInput('table', inputs.timeAtTable, { label: REVENUE_ASSUMPTIONS.timeAtTable.label, step: '0.25' })}${unit('hr')}`, undefined, 'shared')}
-      ${group('Your estimate')}
-      ${row('More months open', 'Months your patio closes for cold today. Only months inside your heating season count.', closedPicker, r.moreMonthsOpen)}
-      ${row('More tables seated', "Guests you turn away, or who won't sit outside, on a cold night you're open.", `${numberInput('guests', inputs.extraGuestsPerColdNight, { label: 'Extra guests on a cold night', placeholder: 'e.g. 6' })}${unit('extra guests / cold night')}`, r.moreTablesSeated)}
-      ${row('Bigger checks', 'What a warm guest adds by staying longer: one more drink or a dessert.', `${numberInput('spend', inputs.extraSpendPerGuest, { label: 'Extra spend per guest', placeholder: 'e.g. 8' })}${unit('$ extra per guest')}`, r.biggerChecks)}
+      ${group('Your estimate', basis)}
+      ${row('More months open', 'Months your patio closes for cold today.', closedPicker, r.moreMonthsOpen)}
+      ${row('More guests seated', "Guests you lose to the cold on days you're open.", `${numberInput('guests', inputs.extraGuestsPerColdDay, { label: 'Extra guests on a cold day', placeholder: 'e.g. 6' })}${unit('extra guests / cold day')}`, r.moreGuestsSeated)}
+      ${row('Bigger checks', 'What a warm guest adds (drink, dessert, etc.) by staying longer.', `${numberInput('spend', inputs.extraSpendPerGuest, { label: 'Extra spend per guest', placeholder: 'e.g. 8' })}${unit('$ extra per guest')}`, r.biggerChecks)}
       <tr class="total"><th scope="row">Total revenue upside</th><td class="input"></td><td class="number">${value(r.total)}</td></tr>
-      ${row('Focal pays for itself in', REVENUE_ASSUMPTIONS.margin.description, `${numberInput('margin', Math.round(inputs.margin * 100), { label: REVENUE_ASSUMPTIONS.margin.label, step: '1' })}${unit('% margin on sales')}`, r.paysForItself)}
     </table>
-    ${r.warning ? `<p class="warning">${esc(r.warning)}</p>` : ''}
   </section>`;
 }
 
@@ -176,7 +161,7 @@ function panel(p: Panel): string {
       ? `<span class="affects-label">${p.affectsHeading}</span>${r.affects.map(a => `<span class="chip${a.key === 'focal' ? ' focal' : ''}">${esc(a.label)}</span>`).join('')}`
       : `<span class="no" role="img" aria-label="None">${icon('dash')}</span>`;
   const row = (r: PanelRow) =>
-    `<tr><th scope="row">${esc(r.label)}${r.tag ? `<span class="source">${esc(r.tag)}</span>` : ''}</th><td class="input">${input(r)}</td><td class="affects">${affects(r)}</td><td class="description">${esc(r.description)}</td></tr>`;
+    `<tr><th scope="row">${esc(r.label)}</th><td class="input">${input(r)}</td><td class="affects">${affects(r)}</td><td class="description">${esc(r.description)}${r.tag ? `<span class="source">${esc(r.tag)}</span>` : ''}</td></tr>`;
   const body = p.groups.map(g => `${g.title ? `<tr class="group"><td colspan="4">${esc(g.title)}</td></tr>` : ''}${g.rows.map(row).join('')}`).join('');
   return `<section class="card panel"><h2 class="condensed">How we calculated this</h2>
     <p class="lede">The defaults behind what you're comparing. Change any you know better, like the rate on your bill.</p>
@@ -231,13 +216,15 @@ export function mount(root: HTMLElement, { ratesUrl }: MountOptions): void {
 
   function render() {
     hideTip();
-    $<HTMLElement>('.hours-per-night').textContent = `${hoursBetween(state.heatingHours)} hrs`;
     const zipRates = rates?.zip === state.zip && rates.value !== 'error' ? rates.value : undefined;
     const model = pageModel(state, zipRates);
 
     const utilities = model.kind === 'ready' ? model.utilities : [];
     utilityField.hidden = utilities.length < 2;
-    const picker = utilities.length < 2 ? '' : `<label class="field-label" for="ch-utility">Utility</label><select id="ch-utility" name="utility">${options(utilities, state.utility || utilities[0]!)}</select>`;
+    // Sized to the chosen name, so a short one like PG&E doesn't take a long one's space.
+    const chosen = shortUtility(state.utility || utilities[0] || '');
+    const picker = utilities.length < 2 ? '' : `<label class="field-label" for="ch-utility">Utility</label><select id="ch-utility" name="utility">${options(utilities, state.utility || utilities[0]!, shortUtility)}</select>`;
+    utilityField.parentElement!.style.setProperty('--chars', String(chosen.length));
     if (utilityField.dataset.for !== picker) {
       utilityField.innerHTML = picker;
       utilityField.dataset.for = picker;
@@ -257,7 +244,8 @@ export function mount(root: HTMLElement, { ratesUrl }: MountOptions): void {
   }
 
   function update(next: Partial<PageState>) {
-    state = { ...state, ...next };
+    // Fewer heating months cut the closed months with them.
+    state = withClosedCapped({ ...state, ...next });
     fetchRates();
     render();
   }
@@ -286,21 +274,15 @@ export function mount(root: HTMLElement, { ratesUrl }: MountOptions): void {
       }
       case 'utility': return update({ utility: value, overrides: withoutRates(state.overrides, true) });
       case 'occupancy': return update({ occupancy: Number(value) / 100 });
+      case 'months': return update({ heatingMonths: Number(value) });
       case 'days': return update({ daysPerWeek: Number(value) });
-      case 'seasonStart': return update({ season: { ...state.season, start: value as Month } });
-      case 'seasonEnd': return update({ season: { ...state.season, end: value as Month } });
-      case 'hoursStart': return update({ heatingHours: { ...state.heatingHours, start: Number(value) } });
-      case 'hoursEnd': return update({ heatingHours: { ...state.heatingHours, end: Number(value) } });
+      case 'hours': return update({ hoursPerDay: Number(value) });
     }
   });
 
   /** The revenue estimate's and the assumptions panel's fields, each named after its link parameter. */
   function estimate(el: HTMLInputElement | HTMLSelectElement) {
-    if (el.name === 'closedStart' || el.name === 'closedEnd') {
-      const start = el.name === 'closedStart' ? el.value : state.revenue.closedMonths?.start;
-      const end = el.name === 'closedEnd' ? el.value : (state.revenue.closedMonths?.end ?? start);
-      state = setParam(state, 'closed', start ? `${start}-${end}` : '');
-    } else if (el instanceof HTMLInputElement && el.type === 'checkbox') {
+    if (el instanceof HTMLInputElement && el.type === 'checkbox') {
       state = setParam(state, el.name, el.checked ? 'yes' : 'no');
     } else {
       state = setParam(state, el.name, el.value.trim());
