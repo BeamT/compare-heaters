@@ -17,7 +17,6 @@
   --border-strong: #b9b9aa;
   --muted: #6b6661;
   --on-dark-muted: rgba(250, 250, 240, 0.62);
-  --warning: #8a5a00;
 
   --sans: elza, Archivo, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --condensed: elza-condensed, Archivo, 'Arial Narrow', sans-serif;
@@ -31,6 +30,10 @@
   --space-5: 24px;
   --space-6: 36px;
   --space-7: 72px;
+
+  /* Type: one size for table rows, one for the gray text that explains them */
+  --text: 16px;
+  --text-small: 15px;
 
   /* Side gutter eases 32 → 16px between 1100 and 900px wide */
   --gutter: clamp(16px, 8vw - 56px, 32px);
@@ -62,11 +65,26 @@
 .ch .condensed { font-family: var(--condensed); font-stretch: 62%; font-weight: 600; letter-spacing: -0.01em; }
 
 /* ---- Inputs strip: dark band at the top, scrolls away with the page ---- */
-.ch .strip { background: var(--black); color: var(--off-white); padding: 10px var(--gutter) var(--space-3); }
-.ch .strip-row { display: flex; flex-wrap: wrap; gap: var(--space-2) 10px; align-items: end; max-width: 1216px; margin: 0 auto; }
+.ch .strip { container-type: inline-size; background: var(--black); color: var(--off-white); padding: 10px var(--gutter) var(--space-3); }
+/*
+ * Fields spread out when the row has room (up to 28px apart) and close in to
+ * 10px before they'd wrap: the gap shares out whatever width the fields leave.
+ * Field widths: inputs and selects below, count fields set by their labels.
+ */
+.ch .strip-row {
+  --fields-width: calc(2 * 70px + 82px + 78px + 2 * 66px);
+  --field-gaps: 5;
+  display: flex; flex-wrap: wrap; align-items: end; max-width: 1216px; margin: 0 auto;
+  row-gap: var(--space-2);
+  column-gap: clamp(10px, (min(100cqi, 1216px) - var(--fields-width)) / var(--field-gaps), 28px);
+}
+.ch .strip-row:has(.utility:not([hidden])) {
+  --fields-width: calc(2 * 70px + 82px + 78px + 2 * 66px + var(--chars) * 1.3ch + 32px);
+  --field-gaps: 6;
+}
 .ch .field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ch .field[hidden] { display: none; }
 .ch .field-label { display: flex; align-items: center; gap: 4px; height: 15px; font: 12px/1.2 var(--mono); text-transform: uppercase; letter-spacing: 0.05em; color: var(--on-dark-muted); white-space: nowrap; padding: 0; }
-.ch .field-label b { font-weight: 500; color: var(--off-white); }
 .ch .strip input, .ch .strip select {
   height: 32px;
   padding: 0 7px;
@@ -80,39 +98,21 @@
 .ch .strip select option { color: var(--black); background: #fff; }
 .ch .strip .zip input { width: 70px; }
 .ch .strip .seats input { width: 70px; }
-.ch .strip .utility select { width: 150px; }
-.ch .strip .occupancy select { width: 74px; }
-.ch .strip .days select { width: 58px; }
-.ch .strip .pair { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--on-dark-muted); }
-.ch .strip .pair select.month { width: 66px; }
-.ch .strip .pair select.time { width: 96px; }
-.ch .info {
-  display: inline-grid;
-  place-items: center;
-  /* A bigger tap target than it looks, without changing the label's height */
-  width: 24px;
-  height: 24px;
-  margin: -5px -5px -5px -3px;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: transparent;
-  color: inherit;
-  font-size: 13px;
-  cursor: help;
-}
-.ch .info:hover { color: var(--off-white); }
+/* Sized to the chosen utility's name; the page sets --chars on the row to its length */
+.ch .strip .utility select { width: calc(var(--chars) * 1.3ch + 32px); max-width: 100%; }
+.ch .strip .occupancy select { width: 82px; }
+.ch .strip .count select { width: 66px; }
 
 /* ---- Results ---- */
 .ch .main { padding: var(--space-6) var(--gutter) var(--space-7); max-width: 1280px; margin: 0 auto; }
 .ch .results { display: flex; flex-direction: column; gap: 44px; }
 .ch .status p { margin: 0; font-size: 16px; color: var(--muted); }
 .ch .status .retry { padding: 0; border: 0; background: none; color: var(--black); text-decoration: underline; cursor: pointer; }
-.ch .hint { font-size: 13px; color: var(--muted); margin: var(--space-2) 0 0; }
+.ch .hint { font-size: var(--text-small); color: var(--muted); margin: var(--space-2) 0 0; }
 
 /* Cost and experience tables share one grid, so their columns line up. The site's spec-sheet look: rules instead of boxes */
 .ch .scroll { overflow-x: auto; }
-.ch table.grid { width: 100%; min-width: 600px; border-collapse: separate; border-spacing: 0; table-layout: fixed; font-size: 14px; }
+.ch table.grid { width: 100%; min-width: 600px; border-collapse: separate; border-spacing: 0; table-layout: fixed; font-size: var(--text); }
 .ch table.grid col.label { width: var(--col1); }
 .ch table.grid col.add { width: var(--addcol); }
 .ch table.grid th, .ch table.grid td { padding: 9px 14px; border-bottom: 1px solid var(--rule); text-align: right; vertical-align: middle; font-weight: 400; }
@@ -183,8 +183,10 @@
 /* Body rows */
 .ch table.grid td.focal { background: var(--focal-tint); }
 .ch table.cost tr.group td { font: 400 12px/1.2 var(--mono); text-transform: uppercase; letter-spacing: 0.05em; padding-top: 28px; padding-bottom: 8px; border-bottom-color: var(--black); }
+/* Totals a step above the line items; per seat stands out most */
+.ch table.cost tr.total .value { font-weight: 600; }
 .ch table.cost tr.perSeat td { padding-top: 14px; padding-bottom: 14px; }
-.ch table.cost tr.perSeat .value { font-family: var(--condensed); font-stretch: 62%; font-weight: 600; font-size: 26px; line-height: 1; }
+.ch table.cost tr.perSeat .value { font-weight: 600; font-size: 22px; line-height: 1; }
 
 /* A number that opens its formula */
 .ch .value {
@@ -204,20 +206,20 @@
 .ch table.experience tbody th { text-align: left; }
 .ch .yes { display: inline-grid; place-items: center; font-size: 17px; }
 .ch .no { display: inline-grid; place-items: center; color: var(--border-strong); font-size: 15px; }
-.ch .how { display: block; margin-top: 3px; font-size: 13px; line-height: 1.35; color: var(--muted); }
+.ch .how { display: block; margin-top: 3px; font-size: var(--text-small); line-height: 1.35; color: var(--muted); }
 
 /* Sections below the tables: a rule on top, no boxed card */
 .ch .card { border-top: 1px solid var(--black); padding-top: 22px; }
 .ch .card h2 { margin: 0 0 var(--space-2); font-size: 30px; line-height: 1; }
-.ch .lede { margin: 0 0 var(--space-4); font-size: 14px; color: var(--muted); }
-.ch .unit { margin: 0 5px; font-size: 13px; color: var(--muted); }
-.ch .description, .ch .source { display: block; font-size: 13px; color: var(--muted); }
+.ch .lede { margin: 0 0 var(--space-4); font-size: var(--text-small); color: var(--muted); }
+.ch .unit { margin: 0 5px; font-size: var(--text-small); color: var(--muted); }
+/* Under a label; the panel's description column is a table cell, so it isn't caught here */
+.ch span.description, .ch .source { display: block; margin-top: 2px; font-size: var(--text-small); line-height: 1.4; color: var(--muted); }
 .ch .group td { font: 400 12px/1.2 var(--mono); text-transform: uppercase; letter-spacing: 0.05em; padding: 20px 0 8px; border-bottom: 1px solid var(--black); }
-.ch .card .pair { display: inline-flex; align-items: center; }
-.ch .card .pair select { width: 72px; padding: 4px; }
+.ch .card select.closed { width: 116px; padding: 4px; }
 
 /* Yes / No, and the panel's tabs: pills */
-.ch .question { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); font-size: 15px; }
+.ch .question { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); font-size: var(--text); }
 .ch .segmented { display: inline-flex; gap: 2px; padding: 3px; border-radius: 40px; background: var(--light-gray); }
 .ch .segmented button { padding: 5px 16px; border: 0; border-radius: 40px; background: transparent; font-size: 13px; font-weight: 500; cursor: pointer; transition: background-color 0.2s; }
 .ch .segmented button[aria-pressed='true'] { background: var(--black); color: var(--off-white); }
@@ -227,24 +229,34 @@
 .ch .tabs button[aria-pressed='true'] { border-color: var(--black); background: var(--black); color: var(--off-white); }
 
 /* Revenue upside: each input on the row of the number it drives */
-.ch table.lines { width: 100%; margin-top: var(--space-3); border-collapse: collapse; font-size: 14px; }
+.ch table.lines { width: 100%; margin-top: var(--space-3); border-collapse: collapse; font-size: var(--text); }
 .ch table.lines th, .ch table.lines td { padding: 12px 0; border-bottom: 1px solid var(--rule); text-align: left; font-weight: 400; vertical-align: middle; }
 .ch table.lines td.input { padding: 12px; white-space: nowrap; }
+/* A $ in front hangs in the gap, so every box starts on the same line */
+@media (min-width: 861px) {
+  .ch table.lines td.input { padding-left: 24px; }
+  .ch table.lines .unit.before { position: absolute; margin: 0; transform: translate(calc(-100% - 6px), 5px); }
+}
 .ch table.lines td.input input[type='number'] { width: 80px; padding: 4px 7px; }
 .ch table.lines tr.shared th, .ch table.lines tr.shared td { padding-top: 8px; padding-bottom: 8px; }
-.ch table.lines td.number { text-align: right; white-space: nowrap; font-family: var(--condensed); font-stretch: 62%; font-weight: 600; font-size: 28px; line-height: 1; }
-.ch table.lines tr.total th, .ch table.lines tr.total td { border-top: 1.5px solid var(--border-strong); font-weight: 600; }
-.ch .warning { margin: var(--space-2) 0 0; font-size: 13px; color: var(--warning); }
+/* .group's own rule loses to the row rule above, so it's restated here */
+.ch table.lines tr.group td { padding: 24px 0 8px; border-bottom-color: var(--black); }
+.ch table.lines tr.note td { padding: 10px 0 0; border-bottom: 0; font-size: var(--text-small); line-height: 1.4; color: var(--muted); }
+/* Like the cost table: line items at text size, only the total stands out */
+.ch table.lines td.number { text-align: right; white-space: nowrap; }
+.ch table.lines tr.total td.number { font-weight: 600; font-size: 22px; line-height: 1; }
+.ch table.lines tr.total th, .ch table.lines tr.total td { border-top: 1.5px solid var(--border-strong); }
 
 /* Assumptions panel */
-.ch table.sheet { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.ch table.sheet { width: 100%; border-collapse: collapse; font-size: var(--text); }
 .ch table.sheet th, .ch table.sheet td { padding: 8px 10px; border-bottom: 1px solid var(--rule); text-align: left; font-weight: 400; vertical-align: middle; }
 .ch table.sheet th:first-child, .ch table.sheet td:first-child { padding-left: 0; }
 .ch table.sheet thead th { font: 400 12px/1.2 var(--mono); text-transform: uppercase; letter-spacing: 0.05em; border-bottom-color: var(--black); }
 .ch table.sheet td.input { width: 170px; white-space: nowrap; }
 .ch table.sheet td.input input[type='number'] { width: 92px; padding: 4px 7px; }
 .ch table.sheet td.input .unit { margin-right: 0; }
-.ch table.sheet td.description { color: var(--muted); }
+.ch table.sheet td.description { font-size: var(--text-small); line-height: 1.4; color: var(--muted); }
+.ch table.sheet td.description .source { margin-top: 4px; color: var(--black); }
 .ch input[type='checkbox'] { width: 18px; height: 18px; accent-color: var(--black); }
 .ch .chip { display: inline-block; margin: 1px 4px 1px 0; padding: 2px 8px; border-radius: 40px; background: var(--light-gray); font-size: 13px; white-space: nowrap; }
 .ch .chip.focal { background: var(--focal-tint); }
@@ -267,16 +279,15 @@
 .ch .tip[hidden] { display: none; }
 
 @media (max-width: 860px) {
-  .ch { --col1: 30%; --addcol: 132px; --pill-h: 40px; }
+  .ch { --col1: 30%; --addcol: 132px; --pill-h: 40px; --text: 15px; --text-small: 14px; }
   .ch .strip { padding: var(--space-3) var(--space-4); }
   .ch .main { padding: var(--space-5) var(--space-4) 48px; }
-  .ch table.grid { font-size: 13px; }
   .ch table.grid thead th.title { font-size: 26px; }
   .ch .tab { font-size: 13px; padding-left: 10px; padding-right: 28px; }
   .ch .tab.focal { padding-right: 10px; }
   /* Row labels stay put while the numbers scroll sideways */
   .ch table.grid th:first-child, .ch table.grid td:first-child { position: sticky; left: 0; z-index: 1; background: var(--off-white); padding-right: 10px; }
-  .ch table.cost tr.perSeat .value { font-size: 20px; }
+  .ch table.cost tr.perSeat .value { font-size: 18px; }
   .ch .card h2 { font-size: 26px; }
 
   /* Revenue: each input drops under its label; the number stays on the right */
@@ -284,11 +295,13 @@
   .ch table.lines tr { display: grid; grid-template-columns: 1fr auto; column-gap: var(--space-3); border-bottom: 1px solid var(--rule); }
   .ch table.lines th, .ch table.lines td, .ch table.lines tr.total th, .ch table.lines tr.total td { border: 0; }
   .ch table.lines tr.group { border-bottom-color: var(--black); }
-  .ch table.lines tr.group td { grid-column: 1 / -1; }
+  .ch table.lines tr.group td, .ch table.lines tr.note td { grid-column: 1 / -1; }
+  .ch table.lines tr.note { border-bottom: 0; }
   .ch table.lines tr.total { border-top: 1.5px solid var(--border-strong); }
   .ch table.lines td:empty { display: none; }
   .ch table.lines td.input, .ch table.lines tr.shared td.input { grid-column: 1; grid-row: 2; padding: 0 0 12px; white-space: normal; }
-  .ch table.lines td.number { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-size: 22px; }
+  .ch table.lines td.number { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+  .ch table.lines tr.total td.number { font-size: 18px; }
 
   /* Panel: label and value on top, then what it affects and what it is */
   .ch table.sheet thead { display: none; }
@@ -300,5 +313,5 @@
   .ch table.sheet td.input { width: auto; grid-column: 2; grid-row: 1; }
   .ch table.sheet td.affects, .ch table.sheet td.description { grid-column: 1 / -1; padding-top: 6px; }
   .ch table.sheet td.affects:has(.no) { display: none; }
-  .ch .affects-label { display: inline; margin-right: 6px; font-size: 13px; color: var(--muted); }
+  .ch .affects-label { display: inline; margin-right: 6px; font-size: var(--text-small); color: var(--muted); }
 }

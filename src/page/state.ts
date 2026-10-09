@@ -1,6 +1,6 @@
 // Everything the visitor has entered or chosen. It lives only in the query
 // string, so the browser URL reopens the same view.
-import { ASSUMPTIONS, EDITABLE, MONTHS, OPTIONS, PATIO_DEFAULTS, REVENUE_DEFAULTS, type Assumptions, type HourRange, type MonthRange, type OptionKey, type RevenueInputs } from '../assumptions.ts';
+import { ASSUMPTIONS, EDITABLE, OPTIONS, PATIO_DEFAULTS, REVENUE_DEFAULTS, type Assumptions, type OptionKey, type RevenueInputs } from '../assumptions.ts';
 
 /** The options a visitor can hide; Focal is always shown. */
 export type Competitor = Exclude<OptionKey, 'focal'>;
@@ -14,9 +14,9 @@ export interface PageState {
   /** Undefined until entered. */
   seats: number | undefined;
   occupancy: number;
-  season: MonthRange;
+  heatingMonths: number;
   daysPerWeek: number;
-  heatingHours: HourRange;
+  hoursPerDay: number;
   /** In table order. */
   hidden: Competitor[];
   /** "Do you heat your patio today?" Only a no opens the revenue estimate. */
@@ -48,18 +48,17 @@ const int = (value: string, min: number, max: number) => {
   return /^\d+$/.test(value) && n >= min && n <= max ? n : undefined;
 };
 /** Reads a whole number from min to max into one field of the state. */
-const intParam = <K extends 'seats' | 'daysPerWeek'>(key: K, min: number, max: number) => (value: string) => {
+const intParam = <K extends 'seats' | 'heatingMonths' | 'daysPerWeek' | 'hoursPerDay'>(key: K, min: number, max: number) => (value: string) => {
   const n = int(value, min, max);
   return n === undefined ? undefined : ({ [key]: n } as Partial<PageState>);
 };
-const month = (value: string | undefined) => MONTHS.find(m => m === value);
 /** A number like 42, 42.5 or .5, from min (inclusive, or exclusive when 0 must be ruled out) to max. */
 const decimal = (value: string, min: number, max: number, { above = false } = {}) => {
   const n = Number(value);
   return /^(\d+\.?\d*|\.\d+)$/.test(value) && (above ? n > min : n >= min) && n <= max ? n : undefined;
 };
 /** Lifespans and seats per heater divide, so they can't be 0. */
-const DIVISORS: ReadonlySet<keyof Assumptions> = new Set(['propaneTowerLifespan', 'gasLifespan', 'electricLifespan', 'propaneSeatsPerTower', 'gasSeatsPerHeater', 'electricSeatsPerHeater']);
+const DIVISORS: ReadonlySet<keyof Assumptions> = new Set(['focalLifespan', 'propaneTowerLifespan', 'gasLifespan', 'electricLifespan', 'propaneSeatsPerTower', 'gasSeatsPerHeater', 'electricSeatsPerHeater']);
 
 /** An editable assumption's value from text ("yes"/"no" for a checkbox); undefined when it isn't one. */
 export function readAssumption(key: keyof Assumptions, value: string): number | boolean | undefined {
@@ -68,10 +67,6 @@ export function readAssumption(key: keyof Assumptions, value: string): number | 
   return decimal(value, 0, 10_000_000, { above: DIVISORS.has(key) });
 }
 
-const monthRange = (value: string): MonthRange | undefined => {
-  const [start, end, ...rest] = value.split('-').map(month);
-  return start && end && !rest.length ? { start, end } : undefined;
-};
 /** Writes and reads one of the revenue estimate's inputs. */
 const revenueParam = <K extends keyof RevenueInputs>(
   name: string,
@@ -93,20 +88,9 @@ const PARAMS: Param[] = [
     write: s => String(Math.round(s.occupancy * 100)),
     read: v => { const pct = int(v, 10, 100); return pct === undefined || pct % 5 ? undefined : { occupancy: pct / 100 }; },
   },
-  {
-    name: 'season',
-    write: s => `${s.season.start}-${s.season.end}`,
-    read: v => { const season = monthRange(v); return season && { season }; },
-  },
+  { name: 'months', write: s => String(s.heatingMonths), read: intParam('heatingMonths', 1, 12) },
   { name: 'days', write: s => String(s.daysPerWeek), read: intParam('daysPerWeek', 1, 7) },
-  {
-    name: 'hours',
-    write: s => `${s.heatingHours.start}-${s.heatingHours.end}`,
-    read: v => {
-      const [start, end] = v.split('-').map(halfHour);
-      return start === undefined || end === undefined ? undefined : { heatingHours: { start, end } };
-    },
-  },
+  { name: 'hours', write: s => String(s.hoursPerDay), read: intParam('hoursPerDay', 1, 24) },
   {
     name: 'hide',
     write: s => s.hidden.join(','),
@@ -119,10 +103,9 @@ const PARAMS: Param[] = [
   { name: 'heat', write: s => (s.heatToday ? '' : 'no'), read: v => (v === 'no' ? { heatToday: false } : undefined) },
   revenueParam('check', 'averageCheck', String, v => decimal(v, 0, 10_000)),
   revenueParam('table', 'timeAtTable', String, v => decimal(v, 0, 24, { above: true })),
-  revenueParam('closed', 'closedMonths', m => `${m.start}-${m.end}`, monthRange),
-  revenueParam('guests', 'extraGuestsPerColdNight', String, v => decimal(v, 0, 10_000)),
+  revenueParam('closed', 'monthsClosed', String, v => int(v, 1, 12)),
+  revenueParam('guests', 'extraGuestsPerColdDay', String, v => decimal(v, 0, 10_000)),
   revenueParam('spend', 'extraSpendPerGuest', String, v => decimal(v, 0, 10_000)),
-  revenueParam('margin', 'margin', m => String(Math.round(m * 100)), v => { const pct = int(v, 0, 100); return pct === undefined ? undefined : pct / 100; }),
   ...EDITABLE.map((key): Param => ({
     name: key,
     write: s => { const value = s.overrides[key]; return value === undefined ? '' : typeof value === 'boolean' ? (value ? 'yes' : 'no') : String(value); },
@@ -136,12 +119,6 @@ const PARAMS: Param[] = [
   })),
 ];
 
-/** A time of day in half-hour steps, 0–23.5. */
-function halfHour(value: string | undefined): number | undefined {
-  const n = Number(value);
-  return value && /^\d+(\.5)?$/.test(value) && n < 24 ? n : undefined;
-}
-
 /** The state a link describes. Missing or invalid parameters keep their defaults. */
 export function parseQuery(query: string): PageState {
   const params = new URLSearchParams(query);
@@ -151,7 +128,13 @@ export function parseQuery(query: string): PageState {
     const part = value === null ? undefined : read(value, state);
     if (part) state = { ...state, ...part };
   }
-  return state;
+  return withClosedCapped(state);
+}
+
+/** The state with its closed months cut to the heating months, since only heated months can be closed for cold. */
+export function withClosedCapped(state: PageState): PageState {
+  const closed = state.revenue.monthsClosed;
+  return closed === undefined || closed <= state.heatingMonths ? state : { ...state, revenue: { ...state.revenue, monthsClosed: state.heatingMonths } };
 }
 
 const encode = (value: string) => encodeURIComponent(value).replaceAll('%2C', ',');
@@ -186,5 +169,5 @@ export function setParam(state: PageState, name: string, value: string): PageSta
     return parseQuery(params.toString());
   }
   const part = param.read(value, state);
-  return part ? { ...state, ...part } : state;
+  return part ? withClosedCapped({ ...state, ...part }) : state;
 }

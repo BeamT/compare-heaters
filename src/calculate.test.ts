@@ -23,7 +23,7 @@ describe('formula tooltips', () => {
       [
         '12 of 20 Duos on = ⌈20 × 60%⌉, rounded up to whole heaters',
         '$3,021 = 12 Duos on × 0.6 kW × 1,062 hrs × 0.8 heat setting × $0.494/kWh',
-        '1,062 hrs = 7 days/wk × 7 months × 4.33 wks/mo × 5 hrs/night',
+        '1,062 hrs = 7 days/wk × 7 months × 4.33 wks/mo × 5 hrs/day',
       ].join('\n\n'),
     );
   });
@@ -34,13 +34,13 @@ describe('formula tooltips', () => {
         '6 of 10 towers on = ⌈10 × 60%⌉, rounded up to whole heaters',
         '$15,766 = 630.7 tanks × $25 exchange',
         '630.7 tanks = 6 towers on × 40,000 BTU/hr × 1,062 hrs × 0.8 heat setting ÷ (15 lb/tank × 21,548 BTU/lb)',
-        '1,062 hrs = 7 days/wk × 7 months × 4.33 wks/mo × 5 hrs/night',
+        '1,062 hrs = 7 days/wk × 7 months × 4.33 wks/mo × 5 hrs/day',
       ].join('\n\n'),
     );
   });
 
-  it('explains propane staff time from tank swaps and nightly setup', () => {
-    expect(tooltip(run().propane.staffTime)).toBe('$7,743 = (630.7 tanks × 20 min + 10 towers × 5 min × 212 nights) ÷ 60 × $20/hr');
+  it('explains propane staff time from tank swaps and daily setup', () => {
+    expect(tooltip(run().propane.staffTime)).toBe('$7,743 = (630.7 tanks × 20 min + 10 towers × 5 min × 212 days) ÷ 60 × $20/hr');
   });
 
   it('explains gas energy in therms', () => {
@@ -57,15 +57,17 @@ describe('formula tooltips', () => {
   it('builds the totals from the line items', () => {
     const { focal } = run();
     expect(tooltip(focal.upfront)).toBe('$23,850 = $20,000 heaters + $3,850 install');
-    expect(tooltip(focal.yearly)).toBe('$6,421/yr = $3,021 energy + $2,000 maint. & replacement + $1,400 subscription');
+    expect(tooltip(focal.yearly)).toBe('$6,421/yr = $3,021 energy + $2,000 upkeep & replacement + $1,400 subscription');
     expect(tooltip(focal.fiveYear)).toBe('$55,955 = $23,850 upfront + 5 yrs × $6,421/yr');
     expect(tooltip(focal.fiveYearPerSeat)).toBe('$1,399 = $55,955 ÷ 40 seats');
     expect(tooltip(focal.yearlyPerSeat)).toBe('$161/yr = $6,421/yr ÷ 40 seats');
   });
 });
 
-// Numbers from the design prototype, which rounds weeks per month to 4.33.
-// Rows: units, heaters, install, energy, staff time, maintenance & replacement,
+// Numbers from the design prototype, which rounds weeks per month to 4.33 and
+// predates the current tower and gas heater defaults, so those are pinned here.
+const PROTOTYPE_ASSUMPTIONS: Partial<Assumptions> = { weeksPerMonth: 4.33, propaneTowerPrice: 560, propaneTowerLifespan: 4, gasHeaterPrice: 3_600 };
+// Rows: units, heaters, install, energy, staff time, upkeep & replacement,
 // subscription, upfront, yearly, first 5 years, and the three per-seat figures.
 type Row = [number, number, number, number, number, number, number, number, number, number, number, number, number];
 const PROTOTYPE: Record<string, { patio: Patio; assumptions?: Partial<Assumptions>; rows: Record<'focal' | 'propane' | 'gas' | 'electric', Row> }> = {
@@ -97,7 +99,7 @@ const PROTOTYPE: Record<string, { patio: Patio; assumptions?: Partial<Assumption
     },
   },
   'Austin 64-seat patio, 5 nights a week, outlets and circuits in place': {
-    patio: { seats: 64, occupancy: 0.75, season: { start: 'Nov', end: 'Mar' }, daysPerWeek: 5, heatingHours: { start: 18, end: 23 } },
+    patio: { seats: 64, occupancy: 0.75, heatingMonths: 5, daysPerWeek: 5, hoursPerDay: 5 },
     assumptions: { eveningElectricRate: 0.13, naturalGasRate: 0.75, has120VOutlets: true, has240VCircuits: true, propaneTankExchangePrice: 28 },
     rows: {
       focal: [32, 32000, 2200, 810.576, 0, 3200, 1600, 34200, 5610.576, 62252.88, 972.7013, 534.375, 87.6653],
@@ -111,7 +113,7 @@ const PROTOTYPE: Record<string, { patio: Patio; assumptions?: Partial<Assumption
 describe('matches the design prototype', () => {
   for (const [name, { patio, assumptions, rows }] of Object.entries(PROTOTYPE)) {
     it(name, () => {
-      const results = run(patio, { weeksPerMonth: 4.33, ...assumptions });
+      const results = run(patio, { ...PROTOTYPE_ASSUMPTIONS, ...assumptions });
       for (const [option, expected] of Object.entries(rows)) {
         const r = results[option as keyof typeof rows];
         const actual = [r.units, r.hardware, r.install, r.energy, r.staffTime, r.maintenance, r.subscription, r.upfront, r.yearly, r.fiveYear, r.fiveYearPerSeat, r.upfrontPerSeat, r.yearlyPerSeat]
@@ -135,17 +137,17 @@ describe('heaters on', () => {
 });
 
 describe('heating schedule', () => {
-  it('runs heating hours past midnight and the season across the new year', () => {
-    const { focal } = run({ ...sfPatio, season: { start: 'Nov', end: 'Feb' }, heatingHours: { start: 21, end: 1 } });
-    expect(tooltip(focal.energy).split('\n\n')[2]).toBe('485 hrs = 7 days/wk × 4 months × 4.33 wks/mo × 4 hrs/night');
+  it('multiplies heating months, days and hours', () => {
+    const { focal } = run({ ...sfPatio, heatingMonths: 4, hoursPerDay: 14 });
+    expect(tooltip(focal.energy).split('\n\n')[2]).toBe('1,699 hrs = 7 days/wk × 4 months × 4.33 wks/mo × 14 hrs/day');
   });
 });
 
 describe('revenue upside', () => {
   const estimate: Partial<RevenueInputs> = {
     averageCheck: 45,
-    closedMonths: { start: 'Jan', end: 'Feb' },
-    extraGuestsPerColdNight: 6,
+    monthsClosed: 2,
+    extraGuestsPerColdDay: 6,
     extraSpendPerGuest: 8,
   };
 
@@ -154,54 +156,41 @@ describe('revenue upside', () => {
     expect(tooltip(revenue.moreMonthsOpen!)).toBe(
       '$218,400/yr = 2 months × 4.33 wks/mo × 7 days/wk × 24 seats filled × (5 hrs ÷ 1.5 hr at the table) × $45 check',
     );
-    expect(tooltip(revenue.moreTablesSeated!)).toBe(
+    expect(tooltip(revenue.moreGuestsSeated!)).toBe(
       [
-        '$40,950/yr = 152 cold open nights × 6 extra guests × $45 check',
-        '152 cold open nights = (7 heated months − 2 closed) × 4.33 wks/mo × 7 days/wk',
+        '$40,950/yr = 152 cold open days × 6 extra guests × $45 check',
+        '152 cold open days = (7 heated months − 2 closed) × 4.33 wks/mo × 7 days/wk',
       ].join('\n\n'),
     );
     expect(tooltip(revenue.biggerChecks!).split('\n\n')[0]).toBe(
-      '$97,067/yr = 152 cold open nights × 24 seats filled × (5 hrs ÷ 1.5 hr at the table) × $8 extra spend',
+      '$97,067/yr = 152 cold open days × 24 seats filled × (5 hrs ÷ 1.5 hr at the table) × $8 extra spend',
     );
-    expect(tooltip(revenue.total!)).toBe('$356,417/yr = $218,400 more months + $40,950 more tables + $97,067 bigger checks');
-    expect(tooltip(revenue.paysForItself!)).toBe(
-      '0.2 heating seasons = $23,850 Focal upfront ÷ ($356,417 × 40% margin − $6,421 Focal yearly cost)',
-    );
+    expect(tooltip(revenue.total!)).toBe('$356,417/yr = $218,400 more months + $40,950 more guests + $97,067 bigger checks');
   });
 
   it('matches the design prototype', () => {
     const { revenue } = run(sfPatio, { weeksPerMonth: 4.33 }, estimate);
     expect(revenue.moreMonthsOpen?.value).toBeCloseTo(218232, 2);
-    expect(revenue.moreTablesSeated?.value).toBeCloseTo(40918.5, 2);
+    expect(revenue.moreGuestsSeated?.value).toBeCloseTo(40918.5, 2);
     expect(revenue.biggerChecks?.value).toBeCloseTo(96992, 2);
     expect(revenue.total?.value).toBeCloseTo(356142.5, 2);
-    expect(revenue.paysForItself?.value).toBeCloseTo(0.1753, 4);
   });
 
   it('leaves a line blank until its own input is filled, and totals only the filled lines', () => {
-    const { revenue } = run(sfPatio, {}, { averageCheck: 45, extraGuestsPerColdNight: 6 });
+    const { revenue } = run(sfPatio, {}, { averageCheck: 45, extraGuestsPerColdDay: 6 });
     expect(revenue.moreMonthsOpen).toBeNull();
     expect(revenue.biggerChecks).toBeNull();
-    expect(tooltip(revenue.moreTablesSeated!).split('\n\n')[0]).toBe('$57,330/yr = 212 cold open nights × 6 extra guests × $45 check');
-    expect(tooltip(revenue.total!)).toBe('$57,330/yr = $57,330 more tables');
+    expect(tooltip(revenue.moreGuestsSeated!).split('\n\n')[0]).toBe('$57,330/yr = 212 cold open days × 6 extra guests × $45 check');
+    expect(tooltip(revenue.total!)).toBe('$57,330/yr = $57,330 more guests');
   });
 
   it('shows nothing before any estimate is entered', () => {
     const { revenue } = run();
     expect(revenue.total).toBeNull();
-    expect(revenue.paysForItself).toBeNull();
   });
 
-  it('never pays for itself when the margin on extra sales doesn’t cover Focal’s yearly cost', () => {
-    const { revenue } = run(sfPatio, {}, { averageCheck: 45, extraGuestsPerColdNight: 1, margin: 0.1 });
-    expect(revenue.total?.value).toBeGreaterThan(0);
-    expect(revenue.paysForItself).toBeNull();
-  });
-
-  it('counts only closed months inside the heating season', () => {
-    const { revenue } = run(sfPatio, {}, { averageCheck: 45, closedMonths: { start: 'Apr', end: 'May' } });
-    expect(revenue.closedMonths).toBe(2);
-    expect(revenue.closedMonthsInSeason).toBe(1);
+  it('counts no more closed months than heating months', () => {
+    const { revenue } = run({ ...sfPatio, heatingMonths: 1 }, {}, { averageCheck: 45, monthsClosed: 3 });
     expect(tooltip(revenue.moreMonthsOpen!).startsWith('$109,200/yr = 1 month ×')).toBe(true);
   });
 });

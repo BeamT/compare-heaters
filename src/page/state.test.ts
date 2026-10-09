@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_STATE, parseQuery, setParam, toQuery, type PageState } from './state.ts';
+import { DEFAULT_STATE, parseQuery, setParam, toQuery, withClosedCapped, type PageState } from './state.ts';
 
 describe('page state in the query string', () => {
   it('opens a blank link at the defaults, and keeps defaults out of the link', () => {
@@ -13,17 +13,17 @@ describe('page state in the query string', () => {
       utility: 'PG&E',
       seats: 40,
       occupancy: 0.35,
-      season: { start: 'Nov', end: 'Mar' },
+      heatingMonths: 5,
       daysPerWeek: 5,
-      heatingHours: { start: 17.5, end: 1 },
+      hoursPerDay: 14,
       hidden: ['gas'],
       heatToday: true,
-      revenue: { timeAtTable: 1.5, margin: 0.4 },
+      revenue: { timeAtTable: 1.5 },
       tab: 'all',
       overrides: {},
     };
     const query = toQuery(state);
-    expect(query).toBe('?zip=94110&utility=PG%26E&seats=40&occupancy=35&season=Nov-Mar&days=5&hours=17.5-1&hide=gas&tab=all');
+    expect(query).toBe('?zip=94110&utility=PG%26E&seats=40&occupancy=35&months=5&days=5&hours=14&hide=gas&tab=all');
     expect(parseQuery(query)).toEqual(state);
   });
 
@@ -31,19 +31,21 @@ describe('page state in the query string', () => {
     const state: PageState = {
       ...DEFAULT_STATE,
       heatToday: false,
-      revenue: { averageCheck: 42.5, timeAtTable: 1.25, closedMonths: { start: 'Jan', end: 'Feb' }, extraGuestsPerColdNight: 6, extraSpendPerGuest: 8, margin: 0.35 },
+      revenue: { averageCheck: 42.5, timeAtTable: 1.25, monthsClosed: 2, extraGuestsPerColdDay: 6, extraSpendPerGuest: 8 },
     };
     const query = toQuery(state);
-    expect(query).toBe('?heat=no&check=42.5&table=1.25&closed=Jan-Feb&guests=6&spend=8&margin=35');
+    expect(query).toBe('?heat=no&check=42.5&table=1.25&closed=2&guests=6&spend=8');
     expect(parseQuery(query)).toEqual(state);
     // Blank inputs stay blank, and nonsense keeps the defaults.
-    expect(parseQuery('?heat=maybe&check=-5&table=0&closed=Jan&guests=x&margin=140')).toEqual(DEFAULT_STATE);
+    expect(parseQuery('?heat=maybe&check=-5&table=0&closed=0&guests=x')).toEqual(DEFAULT_STATE);
   });
 
   it('keeps the defaults for anything a hand-edited link gets wrong', () => {
-    const state = parseQuery('?zip=9411&seats=0&occupancy=33&season=Oct-Smarch&days=8&hours=17-25');
+    const state = parseQuery('?zip=9411&seats=0&occupancy=33&months=13&days=8&hours=25');
     expect(state).toEqual(DEFAULT_STATE);
     expect(parseQuery('?zip=80202&seats=abc&days=6')).toEqual({ ...DEFAULT_STATE, zip: '80202', daysPerWeek: 6 });
+    // Whole hours only.
+    expect(parseQuery('?hours=5.5')).toEqual(DEFAULT_STATE);
   });
 
   it('keeps the assumptions the visitor edited, and only those that can be edited', () => {
@@ -79,5 +81,14 @@ describe('page state in the query string', () => {
     const state: PageState = { ...DEFAULT_STATE, zip: '80202', seats: 24 };
     expect(toQuery(state, '?utm_source=summit&seats=40&hide=gas')).toBe('?utm_source=summit&zip=80202&seats=24');
     expect(toQuery(DEFAULT_STATE, '?utm_source=summit&zip=94110')).toBe('?utm_source=summit');
+  });
+});
+
+describe('closed months', () => {
+  it('are never more than the heating months, in the state or a link', () => {
+    const state: PageState = { ...DEFAULT_STATE, heatingMonths: 3, revenue: { ...DEFAULT_STATE.revenue, monthsClosed: 5 } };
+    expect(withClosedCapped(state).revenue.monthsClosed).toBe(3);
+    expect(parseQuery('?months=3&closed=5').revenue.monthsClosed).toBe(3);
+    expect(setParam(parseQuery('?closed=4'), 'months', '2').revenue.monthsClosed).toBe(2);
   });
 });
