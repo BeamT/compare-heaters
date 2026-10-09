@@ -111,13 +111,12 @@ describe('experience card', () => {
   it('puts the benefits side by side, with how Focal does each', () => {
     expect(marks(sf)).toEqual([
       'Every guest is comfortable: ✓ — — — (Guests set their own heat)',
-      'Heaters turn on and off by themselves: ✓ — — — (Runs on your operating hours)',
+      'No heating empty seats: ✓ — — — (Off when guests leave and at close)',
       'No fuel to buy, store or swap: ✓ — ✓ ✓ (Plugs into a standard 120V outlet)',
       'Nothing burning near guests: ✓ — — ✓ (No flame, no exhaust to breathe)',
       'Nothing for guests or staff to trip over: ✓ — ✓ ✓ (Mounted overhead)',
       'Heat follows your tables when you rearrange: ✓ ✓ — — (Slides anywhere on the rail)',
-      'Problems are caught before guests notice: ✓ — — — (We’re alerted if one fails)',
-      'No service calls to arrange: ✓ — — — (Maintenance & updates included)',
+      'Nothing to maintain: ✓ — — — (We monitor and fix issues)',
     ]);
   });
 

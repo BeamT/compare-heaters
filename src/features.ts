@@ -22,11 +22,10 @@ const row = (label: string, [focal, propane, gas, electric]: [0 | 1, 0 | 1, 0 | 
 // ✓ (1) or — (0) for Focal, propane, gas, electric.
 export const FEATURES: readonly Feature[] = [
   row('Every guest is comfortable', [1, 0, 0, 0], 'Guests set their own heat', 'Other heaters warm a zone, at a level staff set.'),
-  row('Heaters turn on and off by themselves', [1, 0, 0, 0], 'Runs on your operating hours', 'Gas and electric controls are a wall panel staff switch each night; only Focal follows a schedule.'),
+  row('No heating empty seats', [1, 0, 0, 0], 'Off when guests leave and at close', 'Gas and electric controls are a wall panel staff switch each night; only Focal turns off by itself.'),
   row('No fuel to buy, store or swap', [1, 0, 1, 1], 'Plugs into a standard 120V outlet', "Gas's line is in its install cost."),
   row('Nothing burning near guests', [1, 0, 0, 1], 'No flame, no exhaust to breathe'),
   row('Nothing for guests or staff to trip over', [1, 0, 1, 1], 'Mounted overhead', 'Propane towers stand on the patio floor.'),
   row('Heat follows your tables when you rearrange', [1, 1, 0, 0], 'Slides anywhere on the rail', 'Gas and electric are fixed where installed; towers can be wheeled anywhere; Focal moves within its rail.'),
-  row('Problems are caught before guests notice', [1, 0, 0, 0], 'We’re alerted if one fails', 'Focal subscription'),
-  row('No service calls to arrange', [1, 0, 0, 0], 'Maintenance & updates included', 'Focal subscription'),
+  row('Nothing to maintain', [1, 0, 0, 0], 'We monitor and fix issues', 'Focal subscription'),
 ];
