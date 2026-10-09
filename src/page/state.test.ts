@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_STATE, parseQuery, toQuery, type PageState } from './state.ts';
+import { DEFAULT_STATE, parseQuery, setParam, toQuery, type PageState } from './state.ts';
 
 describe('page state in the query string', () => {
   it('opens a blank link at the defaults, and keeps defaults out of the link', () => {
@@ -17,16 +17,56 @@ describe('page state in the query string', () => {
       daysPerWeek: 5,
       heatingHours: { start: 17.5, end: 1 },
       hidden: ['gas'],
+      heatToday: true,
+      revenue: { timeAtTable: 1.5, margin: 0.4 },
+      tab: 'all',
+      overrides: {},
     };
     const query = toQuery(state);
-    expect(query).toBe('?zip=94110&utility=PG%26E&seats=40&occupancy=35&season=Nov-Mar&days=5&hours=17.5-1&hide=gas');
+    expect(query).toBe('?zip=94110&utility=PG%26E&seats=40&occupancy=35&season=Nov-Mar&days=5&hours=17.5-1&hide=gas&tab=all');
     expect(parseQuery(query)).toEqual(state);
+  });
+
+  it("keeps the visitor's revenue estimate", () => {
+    const state: PageState = {
+      ...DEFAULT_STATE,
+      heatToday: false,
+      revenue: { averageCheck: 42.5, timeAtTable: 1.25, closedMonths: { start: 'Jan', end: 'Feb' }, extraGuestsPerColdNight: 6, extraSpendPerGuest: 8, margin: 0.35 },
+    };
+    const query = toQuery(state);
+    expect(query).toBe('?heat=no&check=42.5&table=1.25&closed=Jan-Feb&guests=6&spend=8&margin=35');
+    expect(parseQuery(query)).toEqual(state);
+    // Blank inputs stay blank, and nonsense keeps the defaults.
+    expect(parseQuery('?heat=maybe&check=-5&table=0&closed=Jan&guests=x&margin=140')).toEqual(DEFAULT_STATE);
   });
 
   it('keeps the defaults for anything a hand-edited link gets wrong', () => {
     const state = parseQuery('?zip=9411&seats=0&occupancy=33&season=Oct-Smarch&days=8&hours=17-25');
     expect(state).toEqual(DEFAULT_STATE);
     expect(parseQuery('?zip=80202&seats=abc&days=6')).toEqual({ ...DEFAULT_STATE, zip: '80202', daysPerWeek: 6 });
+  });
+
+  it('keeps the assumptions the visitor edited, and only those that can be edited', () => {
+    const state: PageState = { ...DEFAULT_STATE, overrides: { eveningElectricRate: 0.3, has120VOutlets: true, gasLifespan: 12.5 } };
+    const query = toQuery(state);
+    expect(query).toBe('?eveningElectricRate=0.3&has120VOutlets=yes&gasLifespan=12.5');
+    expect(parseQuery(query)).toEqual(state);
+    // A lifespan or seat count of 0 would divide by zero; fixed values like Focal's price aren't editable.
+    expect(parseQuery('?gasLifespan=0&propaneSeatsPerTower=0&focalPrice=1&installerRate=-1&has240VCircuits=maybe')).toEqual(DEFAULT_STATE);
+    expect(parseQuery('?gasLineCost=0').overrides).toEqual({ gasLineCost: 0 });
+  });
+
+  it('takes one typed value at a time: blank goes back to the default, nonsense changes nothing', () => {
+    const state = setParam(setParam(DEFAULT_STATE, 'check', '45'), 'installerRate', '150');
+    expect(state.revenue.averageCheck).toBe(45);
+    expect(state.overrides).toEqual({ installerRate: 150 });
+    expect(setParam(state, 'installerRate', 'abc')).toEqual(state);
+    expect(setParam(state, 'eveningElectricRate', '.35').overrides).toEqual({ installerRate: 150, eveningElectricRate: 0.35 });
+    expect(setParam(state, 'installerRate', '').overrides).toEqual({});
+    expect(setParam(state, 'check', '').revenue).toEqual(DEFAULT_STATE.revenue);
+    // Typing a default back in leaves the link clean.
+    expect(setParam(state, 'installerRate', '100').overrides).toEqual({});
+    expect(toQuery(setParam(state, 'has120VOutlets', 'no'))).toBe('?check=45&installerRate=150');
   });
 
   it('remembers which comparisons are hidden', () => {
