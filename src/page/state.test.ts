@@ -61,6 +61,7 @@ describe('page state in the query string', () => {
     expect(state.revenue.averageCheck).toBe(45);
     expect(state.overrides).toEqual({ installerRate: 150 });
     expect(setParam(state, 'installerRate', 'abc')).toEqual(state);
+    expect(setParam(state, 'eveningElectricRate', '.35').overrides).toEqual({ installerRate: 150, eveningElectricRate: 0.35 });
     expect(setParam(state, 'installerRate', '').overrides).toEqual({});
     expect(setParam(state, 'check', '').revenue).toEqual(DEFAULT_STATE.revenue);
     // Typing a default back in leaves the link clean.

@@ -190,7 +190,7 @@ describe('assumptions panel', () => {
 
   it('tags the ZIP-based rates with their source, the evening rate as an estimate', () => {
     const rows = ready({ ...sf, tab: 'all' }).panel.groups.flatMap(g => g.rows);
-    expect(rows.find(r => r.key === 'eveningElectricRate')?.tag).toBe("Estimate: PG&E 2024 average × 1.25 for evenings. Use your bill's rate if you know it.");
+    expect(rows.find(r => r.key === 'eveningElectricRate')?.tag).toBe('Estimate: PG&E 2024 average × 1.25 for evenings');
     expect(rows.find(r => r.key === 'naturalGasRate')?.tag).toBe('CA 2024 commercial average');
     expect(rows.find(r => r.key === 'installerRate')?.tag).toBeUndefined();
   });

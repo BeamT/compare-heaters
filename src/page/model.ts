@@ -163,7 +163,8 @@ export function pageModel(state: PageState, rates: ZipRates | undefined): PageMo
     experience: { rows: FEATURES.map(f => ({ label: f.label, checks: shown.map(o => f.has[o]), how: f.focal })) },
     revenue: state.heatToday ? { open: false } : revenue(results.revenue, state),
     panel: panel(state.tab, shown, assumptions, {
-      eveningElectricRate: ownRate ? 'Your rate' : `Estimate: ${source}. Use your bill's rate if you know it.`,
+      // The row's description already points to the visitor's bill.
+      eveningElectricRate: ownRate ? 'Your rate' : `Estimate: ${source}`,
       naturalGasRate: state.overrides.naturalGasRate === undefined ? rates.naturalGas.source : 'Your rate',
     }),
     utilities: rates.utilities.map(u => u.name),

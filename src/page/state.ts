@@ -53,10 +53,10 @@ const intParam = <K extends 'seats' | 'daysPerWeek'>(key: K, min: number, max: n
   return n === undefined ? undefined : ({ [key]: n } as Partial<PageState>);
 };
 const month = (value: string | undefined) => MONTHS.find(m => m === value);
-/** A number like 42 or 42.5, from min (inclusive, or exclusive when 0 must be ruled out) to max. */
+/** A number like 42, 42.5 or .5, from min (inclusive, or exclusive when 0 must be ruled out) to max. */
 const decimal = (value: string, min: number, max: number, { above = false } = {}) => {
   const n = Number(value);
-  return /^\d+(\.\d+)?$/.test(value) && (above ? n > min : n >= min) && n <= max ? n : undefined;
+  return /^(\d+\.?\d*|\.\d+)$/.test(value) && (above ? n > min : n >= min) && n <= max ? n : undefined;
 };
 /** Lifespans and seats per heater divide, so they can't be 0. */
 const DIVISORS: ReadonlySet<keyof Assumptions> = new Set(['propaneTowerLifespan', 'gasLifespan', 'electricLifespan', 'propaneSeatsPerTower', 'gasSeatsPerHeater', 'electricSeatsPerHeater']);

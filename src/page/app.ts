@@ -172,8 +172,9 @@ function panel(p: Panel): string {
       ? `<input name="${r.key}" type="checkbox"${r.value ? ' checked' : ''} aria-label="${esc(r.label)}">`
       : `${numberInput(r.key, r.value, { label: r.label, step: STEPS[r.unit] ?? '1' })}${r.unit ? unit(r.unit) : ''}`;
   const affects = (r: PanelRow) =>
-    r.affects.map(a => `<span class="chip${a.key === 'focal' ? ' focal' : ''}">${esc(a.label)}</span>`).join('') ||
-    `<span class="no" role="img" aria-label="None">${icon('dash')}</span>`;
+    r.affects.length
+      ? `<span class="affects-label">${p.affectsHeading}</span>${r.affects.map(a => `<span class="chip${a.key === 'focal' ? ' focal' : ''}">${esc(a.label)}</span>`).join('')}`
+      : `<span class="no" role="img" aria-label="None">${icon('dash')}</span>`;
   const row = (r: PanelRow) =>
     `<tr><th scope="row">${esc(r.label)}${r.tag ? `<span class="source">${esc(r.tag)}</span>` : ''}</th><td class="input">${input(r)}</td><td class="affects">${affects(r)}</td><td class="description">${esc(r.description)}</td></tr>`;
   const body = p.groups.map(g => `${g.title ? `<tr class="group"><td colspan="4">${esc(g.title)}</td></tr>` : ''}${g.rows.map(row).join('')}`).join('');

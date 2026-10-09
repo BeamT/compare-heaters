@@ -248,6 +248,8 @@
 .ch input[type='checkbox'] { width: 18px; height: 18px; accent-color: var(--black); }
 .ch .chip { display: inline-block; margin: 1px 4px 1px 0; padding: 2px 8px; border-radius: 40px; background: var(--light-gray); font-size: 13px; white-space: nowrap; }
 .ch .chip.focal { background: var(--focal-tint); }
+/* Phones hide the header row, so the chips carry its label there */
+.ch .affects-label { display: none; }
 
 .ch .tip {
   position: absolute;
@@ -298,4 +300,5 @@
   .ch table.sheet td.input { width: auto; grid-column: 2; grid-row: 1; }
   .ch table.sheet td.affects, .ch table.sheet td.description { grid-column: 1 / -1; padding-top: 6px; }
   .ch table.sheet td.affects:has(.no) { display: none; }
+  .ch .affects-label { display: inline; margin-right: 6px; font-size: 13px; color: var(--muted); }
 }
