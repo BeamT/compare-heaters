@@ -1,0 +1,1 @@
+{"state":"CA","zips":{"90101":{"state":"CA","utilities":[1]},"90189":{"state":"CA","utilities":[0]}},"utilities":[{"name":"Los Angeles Department of Water & Power","rate":0.22},{"name":"City of Vernon","rate":0.223}],"states":{"CA":{"electric":0.264,"gas":1.6}},"us":{"electric":0.134,"gas":1.06},"years":{"utilities":2024,"electric":2025,"gas":2025}}

@@ -1,0 +1,1 @@
+{"state":"NY","zips":{"00544":{"state":"NY","utilities":[0]},"00501":{"state":"NY","utilities":[0]}},"utilities":[{"name":"Long Island Power Authority","rate":0.215}],"states":{"NY":{"electric":0.211,"gas":1.11}},"us":{"electric":0.134,"gas":1.06},"years":{"utilities":2024,"electric":2025,"gas":2025}}

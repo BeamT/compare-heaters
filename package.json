@@ -6,6 +6,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "check:public": "node scripts/check-public.ts --all",
+    "rates:refresh": "node scripts/rates/refresh.ts",
     "prepare": "git config core.hooksPath .githooks"
   },
   "devDependencies": {
