@@ -53,33 +53,55 @@ function strip(state: PageState): string {
 /**
  * The cost and experience tables share one column grid, so their columns line
  * up. Only the cost table's header removes (✕) and adds (+) columns.
+ *
+ * The header row is its own table, so it can stick to the top of the screen:
+ * nothing inside a sideways scroller can. The page keeps the two scrolled
+ * together, and the body table repeats the column names, hidden, for screen
+ * readers.
  */
 function grid(t: CostTable, title: string, interactive: boolean) {
   const add = t.hidden.length > 0;
   const cols = `<colgroup><col class="label">${t.columns.map(() => '<col>').join('')}${add ? '<col class="add">' : ''}</colgroup>`;
   const tab = ({ key, label }: CostTable['columns'][number]) =>
     key === 'focal'
-      ? `<th scope="col" class="focal"><div class="tab focal">${esc(label)}</div></th>`
+      ? `<th class="focal"><div class="tab focal">${esc(label)}</div></th>`
       : interactive
-        ? `<th scope="col"><div class="tab"><span>${esc(label)}</span><button type="button" class="remove" data-hide="${key}" aria-label="Remove ${esc(label)}" title="Remove ${esc(label)}">${icon('x')}</button></div></th>`
-        : `<th scope="col"><div class="tab static">${esc(label)}</div></th>`;
+        ? `<th><div class="tab"><span>${esc(label)}</span><button type="button" class="remove" data-hide="${key}" aria-label="Remove ${esc(label)}" title="Remove ${esc(label)}">${icon('x')}</button></div></th>`
+        : `<th><div class="tab static">${esc(label)}</div></th>`;
   const addTabs = !add
     ? ''
     : interactive
       ? `<th class="add"><div class="add-tabs">${t.hidden.map(({ key, label }) => `<button type="button" class="add-tab" data-show="${key}" title="Compare with ${esc(label)}">${icon('plus')}<span>${esc(label)}</span></button>`).join('')}</div></th>`
       : '<th class="add"></th>';
+  const head = `<table class="grid ${title.toLowerCase()}" role="presentation">${cols}<thead><tr><th class="title condensed">${title}</th>${t.columns.map(tab).join('')}${addTabs}</tr></thead></table>`;
+  const names = `<thead class="names"><tr><th><span>${title}</span></th>${t.columns.map(({ label }) => `<th scope="col"><span>${esc(label)}</span></th>`).join('')}${add ? '<th></th>' : ''}</tr></thead>`;
   return {
-    head: `${cols}<thead><tr><th class="title condensed">${title}</th>${t.columns.map(tab).join('')}${addTabs}</tr></thead>`,
+    table: (body: string) =>
+      `<div class="sticky"><div class="head-bar"><div class="scroll head">${head}</div></div><div class="scroll"><table class="grid ${title.toLowerCase()}">${cols}${names}<tbody>${body}</tbody></table></div></div>`,
     addCell: add ? '<td class="add"></td>' : '',
     focalClass: (i: number) => (t.columns[i]?.key === 'focal' ? ' class="focal"' : ''),
   };
+}
+
+/**
+ * Lines up a table's sticky header with its body after either scrolls sideways,
+ * and flags both as scrolled from the start or with more off the right edge, so
+ * the page can draw the edges.
+ */
+function syncScroll(from: HTMLElement) {
+  const pair = [...(from.closest('.sticky')?.querySelectorAll<HTMLElement>('.scroll') ?? [from])];
+  for (const el of pair) {
+    if (el.scrollLeft !== from.scrollLeft) el.scrollLeft = from.scrollLeft;
+    el.toggleAttribute('data-scrolled', el.scrollLeft > 0);
+    el.toggleAttribute('data-more', el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+  }
 }
 
 /** A number that opens its formula. */
 const value = (c: Cell) => (c.tip ? `<button type="button" class="value" data-tip="${esc(c.tip)}">${esc(c.text)}</button>` : `<span class="value blank">${esc(c.text)}</span>`);
 
 function costTable(t: CostTable): string {
-  const { head, addCell, focalClass } = grid(t, 'Cost', true);
+  const { table, addCell, focalClass } = grid(t, 'Cost', true);
   const body = t.sections
     .map(section => {
       const group = `<tr class="group"><td>${esc(section.title)}</td>${t.columns.map((_, i) => `<td${focalClass(i)}></td>`).join('')}${addCell}</tr>`;
@@ -88,7 +110,7 @@ function costTable(t: CostTable): string {
       return group + rows.join('');
     })
     .join('');
-  return `<div><div class="scroll"><table class="grid cost">${head}<tbody>${body}</tbody></table></div>
+  return `<div>${table(body)}
     <p class="hint">Hover or tap any number to see its formula.</p></div>`;
 }
 
@@ -96,14 +118,14 @@ const YES = `<span class="yes" role="img" aria-label="Yes">${icon('check')}</spa
 const NO = `<span class="no" role="img" aria-label="No">${icon('dash')}</span>`;
 
 function experience(t: CostTable, e: Experience): string {
-  const { head, addCell, focalClass } = grid(t, 'Experience', false);
+  const { table, addCell, focalClass } = grid(t, 'Experience', false);
   const body = e.rows
     .map(row =>
       `<tr><th scope="row">${esc(row.label)}</th>${row.checks
         .map((check, i) => `<td${focalClass(i)}>${check ? YES : NO}${t.columns[i]?.key === 'focal' ? `<span class="how">${esc(row.how)}</span>` : ''}</td>`)
         .join('')}${addCell}</tr>`)
     .join('');
-  return `<section class="experience"><div class="scroll"><table class="grid experience">${head}<tbody>${body}</tbody></table></div></section>`;
+  return `<section class="experience">${table(body)}</section>`;
 }
 
 /** A number input named after its link parameter. */
@@ -212,6 +234,7 @@ export function mount(root: HTMLElement, { ratesUrl }: MountOptions): void {
   function show(message: string, html = '') {
     morph(status, message && `<p>${message}</p>`);
     morph(results, html);
+    results.querySelectorAll<HTMLElement>('.scroll:not(.head)').forEach(syncScroll);
   }
 
   function render() {
@@ -359,8 +382,14 @@ export function mount(root: HTMLElement, { ratesUrl }: MountOptions): void {
   document.addEventListener('click', e => { if (anchor && !root.contains(e.target as Node)) hideTip(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') hideTip(); });
   // A tooltip would drift from its number when the table scrolls sideways.
-  root.addEventListener('scroll', () => hideTip(), true);
-  window.addEventListener('resize', () => hideTip());
+  root.addEventListener('scroll', e => {
+    hideTip();
+    if (e.target instanceof HTMLElement && e.target.classList.contains('scroll')) syncScroll(e.target);
+  }, true);
+  window.addEventListener('resize', () => {
+    hideTip();
+    root.querySelectorAll<HTMLElement>('.scroll:not(.head)').forEach(syncScroll);
+  });
 
   fetchRates();
   render();
