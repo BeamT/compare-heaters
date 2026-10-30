@@ -67,8 +67,14 @@ export function calculate({ patio, assumptions: a, revenue: r }: CalculatorInput
   const unitsFor = (seatsPerUnit: number) => Math.ceil(patio.seats / seatsPerUnit);
 
   /** "12 of 20 Duos on": only the whole heaters seated guests need are on. */
-  const heatersOn = (units: number, noun: string): Formula =>
-    derive(ceil(times(count(units), occupancy)), 'count', `of ${units} ${noun} on`, 'rounded up to whole heaters');
+  const heatersOn = (units: number, noun: string, mode = ''): Formula =>
+    derive(ceil(times(count(units), occupancy)), 'count', `of ${units} ${noun} on`, `rounded up to whole heaters${mode}`);
+
+  /** Competitor heaters stay on every open hour unless the visitor manages heat by section. */
+  const competitorsOn = (units: number, noun: string): Formula =>
+    a.heatManagedBySection
+      ? heatersOn(units, noun, ', managed by section')
+      : derive(count(units, noun), 'count', `of ${units} ${noun} on`, 'every open hour');
 
   /** Adds the totals and per-seat rows to an option's line items. */
   function column(units: number, items: LineItems, yearlyParts: Array<[Explained, string]>): OptionResult {
@@ -118,7 +124,7 @@ export function calculate({ patio, assumptions: a, revenue: r }: CalculatorInput
 
   // Propane towers
   const towers = unitsFor(a.propaneSeatsPerTower);
-  const towersOn = heatersOn(towers, 'towers');
+  const towersOn = competitorsOn(towers, 'towers');
   const towerPrice = usd(a.propaneTowerPrice);
   const tanks = derive(
     div(
@@ -156,7 +162,7 @@ export function calculate({ patio, assumptions: a, revenue: r }: CalculatorInput
 
   // Natural gas
   const gasHeaters = unitsFor(a.gasSeatsPerHeater);
-  const gasOn = heatersOn(gasHeaters, 'heaters');
+  const gasOn = competitorsOn(gasHeaters, 'heaters');
   const gasPrice = usd(a.gasHeaterPrice);
   const gasItems: LineItems = {
     hardware: explain(derive(times(count(gasHeaters, 'heaters'), relabel(gasPrice, 'heater, mount & controls share')), 'usd')),
@@ -186,7 +192,7 @@ export function calculate({ patio, assumptions: a, revenue: r }: CalculatorInput
 
   // Conventional electric
   const electricHeaters = unitsFor(a.electricSeatsPerHeater);
-  const electricOn = heatersOn(electricHeaters, 'heaters');
+  const electricOn = competitorsOn(electricHeaters, 'heaters');
   const electricPrice = usd(a.electricHeaterPrice);
   const electricItems: LineItems = {
     hardware: explain(derive(times(count(electricHeaters, 'heaters'), relabel(electricPrice, 'heater, mount & controls share')), 'usd')),

@@ -50,10 +50,10 @@ describe('cost table', () => {
   it('fills the competitor columns from the engine, each number with its formula', () => {
     const t = table();
     const row = (label: string) => t.sections.flatMap(s => s.rows).find(r => r.label === label)!;
-    expect(row('Energy').cells.map(c => c.text)).toEqual(['$3,021', '$15,766', '$2,155', '$8,391']);
+    expect(row('Energy').cells.map(c => c.text)).toEqual(['$3,021', '$26,277', '$3,017', '$11,748']);
     expect(row('Staff time').cells[1]).toEqual({
-      text: '$7,743',
-      tip: '$7,743 = (630.7 tanks × 20 min + 10 towers × 5 min × 212 days) ÷ 60 × $20/hr',
+      text: '$10,546',
+      tip: '$10,546 = (1051.1 tanks × 20 min + 10 towers × 5 min × 212 days) ÷ 60 × $20/hr',
     });
     expect(row('Install').cells[1]).toEqual({ text: '$0', tip: 'Nothing to install: towers stand on the patio floor.' });
   });
@@ -68,7 +68,7 @@ describe('cost table', () => {
     const labels = t.sections.flatMap(s => s.rows.map(r => r.label));
     expect(labels).not.toContain('Staff time');
     expect(labels).toContain('Subscription');
-    expect(t.sections[0]!.rows[0]!.cells.map(c => c.text)).toEqual(['$55,955', '$66,076']);
+    expect(t.sections[0]!.rows[0]!.cells.map(c => c.text)).toEqual(['$55,955', '$70,386']);
   });
 
   it('labels the ZIP-based evening rate as an estimate wherever it shows', () => {
@@ -192,7 +192,7 @@ describe('assumptions panel', () => {
   it("groups every row under its option on the All tab, and lists only what's shown", () => {
     const all = panel({ ...sf, tab: 'all', hidden: ['gas'] });
     expect(ready({ ...sf, tab: 'all' }).panel.affectsHeading).toBe('Affects');
-    expect(all.filter(line => line.startsWith('#'))).toEqual(['# Focal', '# Propane towers', '# Conventional electric']);
+    expect(all.filter(line => line.startsWith('#'))).toEqual(['# Focal', '# Propane towers', '# Conventional electric', '# Shared']);
     expect(all.slice(0, 3)).toEqual([
       '# Focal',
       'Evening electricity rate = 0.494 $/kWh [Focal, Conventional electric]',
@@ -202,6 +202,21 @@ describe('assumptions panel', () => {
     expect(all).toContain('240V circuits already in place = false [Conventional electric]');
     const withGas = panel({ ...sf, tab: 'all' });
     expect(withGas[withGas.indexOf('# Natural gas') + 1]).toBe('Natural gas rate = 1.45 $/therm [Natural gas]');
+  });
+
+  it('offers managing heat and seating by section to the three competitors only, while one is shown', () => {
+    const label = 'Manage heat and seating by section';
+    const rowsOn = (state: PageState) => ready(state).panel.groups.flatMap(g => g.rows);
+    expect(rowsOn(sf).some(r => r.label === label)).toBe(false);
+    const gas = rowsOn({ ...sf, tab: 'gas' }).find(r => r.label === label)!;
+    expect(gas.value).toBe(false);
+    expect(gas.description).toBe(
+      'Check if staff fill one section of tables before opening the next, and switch off the sections not in use. Competitor heaters then run only as occupancy needs, rounded up to whole heaters. Unchecked, they run every open hour.',
+    );
+    expect(gas.affects.map(a => a.label)).toEqual(['Propane towers', 'Conventional electric']);
+    const all = panel({ ...sf, tab: 'all' });
+    expect(all[all.indexOf('# Shared') + 1]).toBe(`${label} = false [Propane towers, Natural gas, Conventional electric]`);
+    expect(panel({ ...sf, tab: 'all', hidden: ['propane', 'gas', 'electric'] }).some(line => line.startsWith(label))).toBe(false);
   });
 
   it("falls back to Focal's tab when the chosen option is hidden", () => {
@@ -220,6 +235,15 @@ describe('editing an assumption', () => {
     const rows = ready(edited).panel.groups[0]!.rows;
     expect(rows.find(r => r.key === 'installerRate')?.value).toBe(150);
     expect(rows.find(r => r.key === 'has120VOutlets')?.value).toBe(true);
+  });
+
+  it('cuts competitor energy to the heaters seated guests need when heat is managed by section, and leaves Focal alone', () => {
+    const energy = (state: PageState) => cost(state, 'Energy').map(c => c.text);
+    const managed = { ...sf, overrides: { heatManagedBySection: true } };
+    expect(energy(sf)).toEqual(['$3,021', '$26,277', '$3,017', '$11,748']);
+    expect(energy(managed)).toEqual(['$3,021', '$15,766', '$2,155', '$8,391']);
+    expect(cost(managed, 'Energy')[2]!.tip).toMatch(/^5 of 7 heaters on = ⌈7 × 60%⌉, rounded up to whole heaters, managed by section/);
+    expect(cost(sf, 'Energy')[2]!.tip).toMatch(/^7 of 7 heaters on = 7 heaters, every open hour/);
   });
 
   it("stops calling the evening rate an estimate once it's the visitor's own", () => {

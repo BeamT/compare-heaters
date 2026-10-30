@@ -31,21 +31,21 @@ describe('formula tooltips', () => {
   it('explains propane fuel through the tanks it burns', () => {
     expect(tooltip(run().propane.energy)).toBe(
       [
-        '6 of 10 towers on = ⌈10 × 60%⌉, rounded up to whole heaters',
-        '$15,766 = 630.7 tanks × $25 exchange',
-        '630.7 tanks = 6 towers on × 40,000 BTU/hr × 1,062 hrs × 0.8 heat setting ÷ (15 lb/tank × 21,548 BTU/lb)',
+        '10 of 10 towers on = 10 towers, every open hour',
+        '$26,277 = 1051.1 tanks × $25 exchange',
+        '1051.1 tanks = 10 towers on × 40,000 BTU/hr × 1,062 hrs × 0.8 heat setting ÷ (15 lb/tank × 21,548 BTU/lb)',
         '1,062 hrs = 7 days/wk × 7 months × 4.33 wks/mo × 5 hrs/day',
       ].join('\n\n'),
     );
   });
 
   it('explains propane staff time from tank swaps and daily setup', () => {
-    expect(tooltip(run().propane.staffTime)).toBe('$7,743 = (630.7 tanks × 20 min + 10 towers × 5 min × 212 days) ÷ 60 × $20/hr');
+    expect(tooltip(run().propane.staffTime)).toBe('$10,546 = (1051.1 tanks × 20 min + 10 towers × 5 min × 212 days) ÷ 60 × $20/hr');
   });
 
   it('explains gas energy in therms', () => {
     expect(tooltip(run().gas.energy).split('\n\n')[1]).toBe(
-      '$2,155 = 5 heaters on × 35,000 BTU/hr × 1,062 hrs × 0.8 heat setting ÷ 100,000 BTU/therm × $1.45/therm',
+      '$3,017 = 7 heaters on × 35,000 BTU/hr × 1,062 hrs × 0.8 heat setting ÷ 100,000 BTU/therm × $1.45/therm',
     );
   });
 
@@ -66,7 +66,8 @@ describe('formula tooltips', () => {
 
 // Numbers from the design prototype, which rounds weeks per month to 4.33 and
 // predates the current tower and gas heater defaults, so those are pinned here.
-const PROTOTYPE_ASSUMPTIONS: Partial<Assumptions> = { weeksPerMonth: 4.33, propaneTowerPrice: 560, propaneTowerLifespan: 4, gasHeaterPrice: 3_600 };
+// It also reduces every option by occupancy, which is the "managed by section" mode.
+const PROTOTYPE_ASSUMPTIONS: Partial<Assumptions> = { heatManagedBySection: true, weeksPerMonth: 4.33, propaneTowerPrice: 560, propaneTowerLifespan: 4, gasHeaterPrice: 3_600 };
 // Rows: units, heaters, install, energy, staff time, upkeep & replacement,
 // subscription, upfront, yearly, first 5 years, and the three per-seat figures.
 type Row = [number, number, number, number, number, number, number, number, number, number, number, number, number];
@@ -125,9 +126,33 @@ describe('matches the design prototype', () => {
 });
 
 describe('heaters on', () => {
+  const lowOccupancy: Patio = { ...sfPatio, seats: 24, occupancy: 0.35 };
+
+  it('runs every competitor heater all open hours by default, whatever the occupancy', () => {
+    const { propane, gas, electric } = run(lowOccupancy);
+    expect(tooltip(propane.energy).split('\n\n')[0]).toBe('6 of 6 towers on = 6 towers, every open hour');
+    expect(tooltip(gas.energy).split('\n\n')[0]).toBe('4 of 4 heaters on = 4 heaters, every open hour');
+    expect(tooltip(electric.energy).split('\n\n')[0]).toBe('4 of 4 heaters on = 4 heaters, every open hour');
+    expect(electric.energy.value).toBeCloseTo(run({ ...lowOccupancy, occupancy: 1 }).electric.energy.value, 6);
+  });
+
+  it('runs only the heaters seated guests need when heat is managed by section', () => {
+    const { propane, gas, electric } = run(lowOccupancy, { heatManagedBySection: true });
+    expect(tooltip(propane.energy).split('\n\n')[0]).toBe('3 of 6 towers on = ⌈6 × 35%⌉, rounded up to whole heaters, managed by section');
+    expect(tooltip(gas.energy).split('\n\n')[0]).toBe('2 of 4 heaters on = ⌈4 × 35%⌉, rounded up to whole heaters, managed by section');
+    expect(tooltip(electric.energy).split('\n\n')[0]).toBe('2 of 4 heaters on = ⌈4 × 35%⌉, rounded up to whole heaters, managed by section');
+  });
+
+  it('leaves Focal on occupancy in both modes', () => {
+    const line = '9 of 12 Duos on = ⌈12 × 70%⌉, rounded up to whole heaters';
+    const patio: Patio = { ...sfPatio, seats: 24, occupancy: 0.7 };
+    expect(tooltip(run(patio).focal.energy).split('\n\n')[0]).toBe(line);
+    expect(tooltip(run(patio, { heatManagedBySection: true }).focal.energy).split('\n\n')[0]).toBe(line);
+  });
+
   it('rounds up to whole heaters, as in the spec example', () => {
-    const { electric } = run({ ...sfPatio, seats: 24, occupancy: 0.35 });
-    expect(tooltip(electric.energy).split('\n\n')[0]).toBe('2 of 4 heaters on = ⌈4 × 35%⌉, rounded up to whole heaters');
+    const { electric } = run(lowOccupancy, { heatManagedBySection: true });
+    expect(tooltip(electric.energy).split('\n\n')[0]).toBe('2 of 4 heaters on = ⌈4 × 35%⌉, rounded up to whole heaters, managed by section');
   });
 
   it('does not round an exact count up a whole heater', () => {
