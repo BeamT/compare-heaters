@@ -98,9 +98,11 @@ export function calculate({ patio, assumptions: a, revenue: r }: CalculatorInput
   const rails = Math.ceil(duos / a.duosPerRail);
   const duosOn = heatersOn(duos, 'Duos');
   const focalPrice = usd(a.focalPrice);
+  const focalInstallBase = derive(times(count(rails, 'rails'), plus(times(num(a.focalInstallHours, 'hrs'), installerRate), circuit120('circuit'))), 'usd', 'labor & circuits');
+  const focalPanel = derive(usd(a.focalSubPanelCost), 'usd', 'sub-panel / new panel');
   const focalItems: LineItems = {
     hardware: explain(derive(times(count(duos, 'Duos'), focalPrice), 'usd'), { text: `Mounts included. A Duo is one Focal heater; each covers ${a.focalSeatsPerDuo} seats.` }),
-    install: explain(derive(times(count(rails, 'rails'), plus(times(num(a.focalInstallHours, 'hrs'), installerRate), circuit120('circuit'))), 'usd')),
+    install: explain(derive(plus(focalInstallBase.result, focalPanel.result), 'usd'), focalInstallBase, focalPanel),
     energy: energyRow(
       duosOn,
       derive(times(relabel(duosOn.result, 'Duos on'), num(a.focalOutput, 'kW'), heaterHours.result, heatSetting, eveningRate), 'usd'),
@@ -194,9 +196,11 @@ export function calculate({ patio, assumptions: a, revenue: r }: CalculatorInput
   const electricHeaters = unitsFor(a.electricSeatsPerHeater);
   const electricOn = competitorsOn(electricHeaters, 'heaters');
   const electricPrice = usd(a.electricHeaterPrice);
+  const electricInstallBase = derive(times(count(electricHeaters, 'heaters'), plus(times(num(a.electricInstallHours, 'hrs'), installerRate), circuit240)), 'usd', 'labor & circuits');
+  const electricPanel = derive(usd(a.electricSubPanelCost), 'usd', 'sub-panel / new panel');
   const electricItems: LineItems = {
     hardware: explain(derive(times(count(electricHeaters, 'heaters'), relabel(electricPrice, 'heater, mount & controls share')), 'usd')),
-    install: explain(derive(times(count(electricHeaters, 'heaters'), plus(times(num(a.electricInstallHours, 'hrs'), installerRate), circuit240)), 'usd')),
+    install: explain(derive(plus(electricInstallBase.result, electricPanel.result), 'usd'), electricInstallBase, electricPanel),
     energy: energyRow(
       electricOn,
       derive(times(relabel(electricOn.result, 'heaters on'), num(a.electricHeaterOutput, 'kW'), heaterHours.result, heatSetting, eveningRate), 'usd'),

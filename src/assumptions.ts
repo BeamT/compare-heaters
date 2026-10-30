@@ -52,6 +52,7 @@ export interface Assumptions {
   has120VOutlets: boolean;
   installerRate: number;
   focalInstallHours: number;
+  focalSubPanelCost: number;
   propaneTowerPrice: number;
   propaneTankExchangePrice: number;
   propaneTankSwapMinutes: number;
@@ -70,6 +71,7 @@ export interface Assumptions {
   has240VCircuits: boolean;
   electricHeaterPrice: number;
   electricInstallHours: number;
+  electricSubPanelCost: number;
   electricUpkeep: number;
   electricLifespan: number;
   electricSeatsPerHeater: number;
@@ -108,9 +110,10 @@ interface AssumptionInfo<T> {
 export const ASSUMPTIONS: { [K in keyof Assumptions]: AssumptionInfo<Assumptions[K]> } = {
   eveningElectricRate: { label: 'Evening electricity rate', unit: '$/kWh', affects: ['focal', 'electric'], shown: 'panel', source: `NREL / EIA × ${EVENING_FACTOR} for evenings`, description: 'What you pay per kWh during evening service. Use the rate from your bill if you know it.' },
   naturalGasRate: { label: 'Natural gas rate', unit: '$/therm', affects: ['gas'], shown: 'panel', source: 'EIA state commercial price', description: "What you pay per therm of gas. Use your bill's rate if you know it." },
-  newCircuitCost: { label: 'New circuit cost', unit: '$/circuit', affects: ['focal', 'gas', 'electric'], shown: 'panel', default: 350, source: 'Industry estimate', description: 'A new electrical circuit, materials and labor. Focal needs one 120V outlet per rail; gas heaters need one 120V outlet per heater for ignition; conventional electric needs one 240V circuit per heater.' },
   heatManagedBySection: { label: 'Manage heat and seating by section', unit: '', affects: ['propane', 'gas', 'electric'], shown: 'panel', default: false, source: 'Your patio', description: 'Tables fill one section at a time and unused sections are switched off, so competitor heaters run only as occupancy needs. Unchecked, they run every open hour.' },
   has120VOutlets: { label: '120V outlets already in place', unit: '', affects: ['focal', 'gas'], shown: 'panel', default: false, source: 'Your patio', description: 'Check if the 120V outlets are already there: one per rail for Focal, one per heater for gas ignition. Sets the circuit cost to $0 for both.' },
+  newCircuitCost: { label: 'New circuit cost', unit: '$/circuit', affects: ['focal', 'gas', 'electric'], shown: 'panel', default: 350, source: 'Industry estimate', description: 'A new electrical circuit, materials and labor. Focal needs one 120V outlet per rail; gas heaters need one 120V outlet per heater for ignition; conventional electric needs one 240V circuit per heater.' },
+  focalSubPanelCost: { label: 'Focal panel upgrade cost', unit: '$', affects: ['focal'], shown: 'panel', default: 0, source: 'Your installation estimate', description: 'One-time panel or sub-panel upgrade, separate from new circuits.' },
   installerRate: { label: 'Installer rate', unit: '$/hr', affects: ['focal', 'gas', 'electric'], shown: 'panel', default: 100, source: 'Industry estimate', description: 'Hourly rate for whoever mounts and connects the heaters. Running new circuits or gas lines is priced separately.' },
   focalInstallHours: { label: 'Focal install time', unit: 'hrs/rail', affects: ['focal'], shown: 'panel', default: 2, source: 'Focal estimate', description: 'Installer hours per rail: mount the rail and slide the Duos on. Each rail plugs into a standard 120V outlet.' },
   focalLifespan: { label: 'Duo lifespan', unit: 'yrs', affects: ['focal'], shown: 'panel', default: 10, source: 'Same as other electric heaters', description: 'How long a Duo lasts before you replace it. Replacement cost = Duo price ÷ lifespan, per year. Upkeep is covered by the subscription.' },
@@ -130,6 +133,7 @@ export const ASSUMPTIONS: { [K in keyof Assumptions]: AssumptionInfo<Assumptions
   gasSeatsPerHeater: { label: 'Gas seats per heater', unit: 'seats', affects: ['gas'], shown: 'panel', default: 6, source: 'Industry estimate', description: 'How many seats one gas heater keeps warm.' },
   gasHeaterOutput: { label: 'Gas heater output', unit: 'BTU/hr', affects: ['gas'], shown: 'panel', default: 35_000, source: 'Typical heater', description: 'How much heat one gas heater puts out at full blast.' },
   has240VCircuits: { label: '240V circuits already in place', unit: '', affects: ['electric'], shown: 'panel', default: false, source: 'Your patio', description: "Check if each heater spot already has a 240V circuit (one per heater). Sets electric's circuit cost to $0. A 240V circuit can't power a Focal rail as-is, and a 120V outlet can't power a conventional electric heater." },
+  electricSubPanelCost: { label: 'Conventional electric panel upgrade cost', unit: '$', affects: ['electric'], shown: 'panel', default: 0, source: 'Your installation estimate', description: 'One-time panel or sub-panel upgrade, separate from new circuits.' },
   electricHeaterPrice: { label: 'Electric heater & mount price', unit: '$', affects: ['electric'], shown: 'panel', default: 3_000, source: 'Industry quotes', description: 'Price of one heater plus its mounting hardware and its share of the controls.' },
   electricInstallHours: { label: 'Electric heater install time', unit: 'hrs/heater', affects: ['electric'], shown: 'panel', default: 4, source: 'Focal estimate', description: 'Electrician hours per heater: mount the heater, hardwire it to its 240V circuit, plus its share of installing and wiring the control panel.' },
   electricUpkeep: { label: 'Electric heater upkeep', unit: '$/heater/yr', affects: ['electric'], shown: 'panel', default: 50, source: 'Industry estimate', description: 'Yearly service and repairs per heater.' },

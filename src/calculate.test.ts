@@ -51,7 +51,11 @@ describe('formula tooltips', () => {
 
   it('splits install into labor and circuits, and zeroes circuits already in place', () => {
     expect(tooltip(run().gas.install)).toBe('$15,050 = 7 heaters × (6 hrs × $100/hr + $350 ignition circuit + $1,200 gas line)');
-    expect(tooltip(run(sfPatio, { has120VOutlets: true }).focal.install)).toBe('$1,400 = 7 rails × (2 hrs × $100/hr + $0 circuit — outlets in place)');
+    expect(tooltip(run(sfPatio, { has120VOutlets: true }).focal.install)).toBe([
+      '$1,400 = $1,400 labor & circuits + $0 sub-panel / new panel',
+      '$1,400 labor & circuits = 7 rails × (2 hrs × $100/hr + $0 circuit — outlets in place)',
+      '$0 sub-panel / new panel = $0',
+    ].join('\n\n'));
   });
 
   it('builds the totals from the line items', () => {
@@ -61,6 +65,32 @@ describe('formula tooltips', () => {
     expect(tooltip(focal.fiveYear)).toBe('$55,955 = $23,850 upfront + 5 yrs × $6,421/yr');
     expect(tooltip(focal.fiveYearPerSeat)).toBe('$1,399 = $55,955 ÷ 40 seats');
     expect(tooltip(focal.yearlyPerSeat)).toBe('$161/yr = $6,421/yr ÷ 40 seats');
+  });
+});
+
+describe('sub-panel costs', () => {
+  it('defaults both panel costs to zero', () => {
+    const a = defaultAssumptions(sfRates);
+    expect(a.focalSubPanelCost).toBe(0);
+    expect(a.electricSubPanelCost).toBe(0);
+  });
+
+  it.each([false, true])('adds separate one-time fees with existing circuits = %s', existing => {
+    const circuits = { has120VOutlets: existing, has240VCircuits: existing };
+    const base = run(sfPatio, circuits);
+    const updated = run(sfPatio, { ...circuits, focalSubPanelCost: 1200, electricSubPanelCost: 4500 });
+    for (const [option, fee] of [['focal', 1200], ['electric', 4500]] as const) {
+      expect(updated[option].install.value - base[option].install.value).toBe(fee);
+      expect(updated[option].upfront.value - base[option].upfront.value).toBe(fee);
+      expect(updated[option].fiveYear.value - base[option].fiveYear.value).toBeCloseTo(fee);
+      expect(updated[option].yearly).toEqual(base[option].yearly);
+      const formatted = fee.toLocaleString('en-US');
+      expect(tooltip(updated[option].install).split('\n\n').at(-1)).toBe(`$${formatted} sub-panel / new panel = $${formatted}`);
+    }
+    expect(updated.gas).toEqual(base.gas);
+    expect(updated.propane).toEqual(base.propane);
+    expect(run(sfPatio, { focalSubPanelCost: 1200 }).electric).toEqual(run().electric);
+    expect(run(sfPatio, { electricSubPanelCost: 4500 }).focal).toEqual(run().focal);
   });
 });
 

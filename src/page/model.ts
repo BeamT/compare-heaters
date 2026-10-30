@@ -187,6 +187,12 @@ function panel(selected: PanelTab, shown: OptionKey[], assumptions: Assumptions,
     const on = ASSUMPTIONS[key].affects.filter(o => shown.includes(o));
     return on.length ? [{ key, on }] : [];
   });
+  if (tab === 'electric') {
+    const circuitIndex = rows.findIndex(r => r.key === 'newCircuitCost');
+    const [circuit] = rows.splice(circuitIndex, 1);
+    const existingIndex = rows.findIndex(r => r.key === 'has240VCircuits');
+    if (circuit) rows.splice(existingIndex + 1, 0, circuit);
+  }
   const row = ({ key, on }: (typeof rows)[number], affects: OptionKey[]): PanelRow => {
     const { label: name, unit, description = '' } = ASSUMPTIONS[key];
     const tag = tags[key];
