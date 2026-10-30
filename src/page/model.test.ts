@@ -173,8 +173,9 @@ describe('assumptions panel', () => {
     expect(p.affectsHeading).toBe('Also affects');
     expect(panel(sf)).toEqual([
       'Evening electricity rate = 0.494 $/kWh [Conventional electric]',
-      'New circuit cost = 350 $/circuit [Natural gas, Conventional electric]',
       '120V outlets already in place = false [Natural gas]',
+      'New circuit cost = 350 $/circuit [Natural gas, Conventional electric]',
+      'Focal panel upgrade cost = 0 $ []',
       'Installer rate = 100 $/hr [Natural gas, Conventional electric]',
       'Focal install time = 2 hrs/rail []',
       'Duo lifespan = 10 yrs []',
@@ -196,7 +197,7 @@ describe('assumptions panel', () => {
     expect(all.slice(0, 3)).toEqual([
       '# Focal',
       'Evening electricity rate = 0.494 $/kWh [Focal, Conventional electric]',
-      'New circuit cost = 350 $/circuit [Focal, Conventional electric]',
+      '120V outlets already in place = false [Focal]',
     ]);
     expect(all.some(line => /gas/i.test(line))).toBe(false);
     expect(all).toContain('240V circuits already in place = false [Conventional electric]');
