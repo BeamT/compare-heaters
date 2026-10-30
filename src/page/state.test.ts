@@ -58,6 +58,15 @@ describe('page state in the query string', () => {
     expect(parseQuery('?gasLineCost=0').overrides).toEqual({ gasLineCost: 0 });
   });
 
+  it('round-trips managing heat by section, and leaves it unchecked when the link says nothing or something invalid', () => {
+    const state: PageState = { ...DEFAULT_STATE, overrides: { heatManagedBySection: true } };
+    expect(toQuery(state)).toBe('?heatManagedBySection=yes');
+    expect(parseQuery('?heatManagedBySection=yes')).toEqual(state);
+    expect(parseQuery('?heatManagedBySection=no')).toEqual(DEFAULT_STATE);
+    expect(parseQuery('?heatManagedBySection=maybe')).toEqual(DEFAULT_STATE);
+    expect(parseQuery('')).toEqual(DEFAULT_STATE);
+  });
+
   it('takes one typed value at a time: blank goes back to the default, nonsense changes nothing', () => {
     const state = setParam(setParam(DEFAULT_STATE, 'check', '45'), 'installerRate', '150');
     expect(state.revenue.averageCheck).toBe(45);

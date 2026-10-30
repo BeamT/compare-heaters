@@ -26,7 +26,7 @@ web
 ## Positioning
 
 - Focal's cost edge depends on local rates and patio size; the experience sets it apart too: per-seat heat guests set themselves, turns off by itself when guests leave, nothing burning, monitored. The tool shows both.
-- Focal's energy scales with occupancy (heats a seat only while it's occupied); other heaters cover 4–6 seats and run whenever anyone in their area is seated.
+- Focal's energy scales with occupancy (heats a seat only while it's occupied). Other heaters cover 4–6 seats and usually stay on regardless of occupancy, so by default they run every open hour; the "Manage heat and seating by section" assumption scales them with occupancy too, for patios that fill and heat one section at a time.
 - Credibility through transparency: every calculated number shows its formula with real values filled in.
 
 ## Operating Context
