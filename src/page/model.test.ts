@@ -211,7 +211,7 @@ describe('assumptions panel', () => {
     const gas = rowsOn({ ...sf, tab: 'gas' }).find(r => r.label === label)!;
     expect(gas.value).toBe(false);
     expect(gas.description).toBe(
-      'Check if staff fill one section of tables before opening the next, and switch off the sections not in use. Competitor heaters then run only as occupancy needs, rounded up to whole heaters. Unchecked, they run every open hour.',
+      'Tables fill one section at a time and unused sections are switched off, so competitor heaters run only as occupancy needs. Unchecked, they run every open hour.',
     );
     expect(gas.affects.map(a => a.label)).toEqual(['Propane towers', 'Conventional electric']);
     const all = panel({ ...sf, tab: 'all' });
